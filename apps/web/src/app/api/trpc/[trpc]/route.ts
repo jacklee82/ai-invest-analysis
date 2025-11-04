@@ -8,11 +8,12 @@ import { NextRequest } from "next/server";
  * GET 및 POST 요청 처리
  */
 export async function GET(req: NextRequest) {
+	const request = req as unknown as Request;
 	return fetchRequestHandler({
 		endpoint: "/api/trpc",
-		req: req as unknown as Request,
+		req: request,
 		router: appRouter,
-		createContext: () => createContext(req),
+		createContext: () => createContext(request),
 		onError({ error, path }) {
 			console.error(`tRPC 에러 [${path}]:`, error);
 		},
@@ -26,11 +27,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+	const request = req as unknown as Request;
 	return fetchRequestHandler({
 		endpoint: "/api/trpc",
-		req: req as unknown as Request,
+		req: request,
 		router: appRouter,
-		createContext: () => createContext(req),
+		createContext: () => createContext(request),
 		onError({ error, path }) {
 			console.error(`tRPC 에러 [${path}]:`, error);
 		},

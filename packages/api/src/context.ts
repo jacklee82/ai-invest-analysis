@@ -1,11 +1,11 @@
-import type { NextRequest } from "next/server";
+import type { Request } from "next/server";
 
 /**
  * tRPC 컨텍스트 생성
- * @param req Next.js 요청 객체
+ * @param req 요청 객체 (Request 또는 NextRequest)
  * @returns tRPC 컨텍스트
  */
-export async function createContext(req: NextRequest) {
+export async function createContext(req: Request) {
 	try {
 		// DB는 lazy import로 처리하여 타입 에러 방지
 		const { db } = await import("@my-better-t-app/db");
