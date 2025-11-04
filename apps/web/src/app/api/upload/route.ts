@@ -8,6 +8,7 @@ import {
 	uploadJob,
 	UploadSource,
 	UploadStatus,
+	BusinessType,
 	eq,
 } from "@my-better-t-app/db";
 import { v4 as uuidv4 } from "uuid";
@@ -177,6 +178,13 @@ async function processAFile(data: any[]): Promise<number> {
 			? parseInt(String(row["OST투자금"]), 10)
 			: null;
 
+		const businessTypeRaw = String(row["BM구분"] || "").trim();
+		const businessType: BusinessType = (Object.values(BusinessType) as string[]).includes(
+			businessTypeRaw,
+		)
+			? (businessTypeRaw as BusinessType)
+			: BusinessType.일반투자;
+
 		return {
 			projectId,
 			projectName: String(row["프로젝트명"] || "").trim(),
@@ -189,8 +197,8 @@ async function processAFile(data: any[]): Promise<number> {
 			totalRecouped: totalRecouped,
 			mdPurchaseCost: mdPurchaseCost,
 			ostInvestment: ostInvestment,
-			businessType: String(row["BM구분"] || "").trim(),
-		};
+			businessType,
+		} satisfies typeof project.$inferInsert;
 	});
 
 	// 배치 삽입
