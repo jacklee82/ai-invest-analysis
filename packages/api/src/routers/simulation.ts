@@ -20,53 +20,82 @@ export const simulationRouter = router({
 			}),
 		)
 		.mutation(async ({ input }) => {
-			// FastAPI 예측 서비스 연동 (현재는 더미 데이터로 동작)
-			// TODO: 실제 FastAPI 서비스 연동
-			// const fastApiUrl = process.env.FASTAPI_URL || "http://localhost:8000";
-			// const response = await fetch(`${fastApiUrl}/forecast`, {
-			// 	method: "POST",
-			// 	headers: { "Content-Type": "application/json" },
-			// 	body: JSON.stringify({
-			// 		series: input.series,
-			// 		months: input.months,
-			// 		model: input.model,
-			// 	}),
-			// });
-			// const apiResult = await response.json();
-
-			// 더미 데이터: 간단한 선형 감소 추세로 예측
-			const average = input.series.reduce((a, b) => a + b, 0) / input.series.length;
-			const trend = (input.series[input.series.length - 1] - input.series[0]) / input.series.length;
+			// FastAPI 예측 서비스 연동
+			const fastApiUrl = process.env.FASTAPI_URL || "http://localhost:8000";
 			
-			const moderate: number[] = [];
-			for (let i = 0; i < input.months; i++) {
-				// 선형 감소 추세 적용
-				const value = average + trend * (i + 1);
-				moderate.push(Math.max(0, value));
+			try {
+				// FastAPI 호출
+				const response = await fetch(`${fastApiUrl}/forecast`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						series: input.series,
+						months: input.months,
+						model: input.model,
+					}),
+					signal: AbortSignal.timeout(10000), // 10초 타임아웃
+				});
+
+				if (!response.ok) {
+					throw new Error(`FastAPI 응답 오류: ${response.status}`);
+				}
+
+				const apiResult = await response.json();
+
+				// Moderate CF 받아서 Worst/Best 계산
+				const moderate = apiResult.moderate || [];
+				const worst = moderate.map((v: number) => v * 0.9);
+				const best = moderate.map((v: number) => v * 1.1);
+
+				return {
+					moderate,
+					worst,
+					best,
+					dcf: {
+						worst: 0, // 클라이언트에서 계산
+						moderate: 0,
+						best: 0,
+					},
+					bep: null, // 클라이언트에서 계산
+					meta: {
+						model: apiResult.meta?.model || input.model,
+						rmse: apiResult.meta?.rmse || 0,
+						mape: apiResult.meta?.mape || 0,
+					},
+				};
+			} catch (error) {
+				// FastAPI 호출 실패 시 폴백: 더미 데이터 사용
+				console.warn("FastAPI 호출 실패, 폴백 모드 사용:", error);
+				
+				const average = input.series.reduce((a, b) => a + b, 0) / input.series.length;
+				const trend = (input.series[input.series.length - 1] - input.series[0]) / input.series.length;
+				
+				const moderate: number[] = [];
+				for (let i = 0; i < input.months; i++) {
+					const value = average + trend * (i + 1);
+					moderate.push(Math.max(0, value));
+				}
+
+				const worst = moderate.map((v) => v * 0.9);
+				const best = moderate.map((v) => v * 1.1);
+
+				return {
+					moderate,
+					worst,
+					best,
+					dcf: {
+						worst: 0,
+						moderate: 0,
+						best: 0,
+					},
+					bep: null,
+					meta: {
+						model: input.model === "auto" ? "naive" : input.model,
+						rmse: 0.1,
+						mape: 5.0,
+					},
+				};
 			}
-
-			// Worst CF = Moderate CF * 0.9
-			const worst = moderate.map((v) => v * 0.9);
-			
-			// Best CF = Moderate CF * 1.1
-			const best = moderate.map((v) => v * 1.1);
-
-			return {
-				moderate,
-				worst,
-				best,
-				dcf: {
-					worst: 0, // 클라이언트에서 계산
-					moderate: 0,
-					best: 0,
-				},
-				bep: null, // 클라이언트에서 계산
-				meta: {
-					model: input.model === "auto" ? "linear" : input.model,
-					rmse: 0.1,
-					mape: 5.0,
-				},
-			};
 		}),
 });
 

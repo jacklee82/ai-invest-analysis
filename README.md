@@ -64,6 +64,30 @@ bun run dev
 
 Open [http://localhost:3001](http://localhost:3001) in your browser to see your fullstack application.
 
+## AI Backend (FastAPI) Setup
+
+시뮬레이터 모듈에서 사용하는 예측 서비스를 실행하려면:
+
+1. **Python 환경 설정** (uv 사용 권장):
+```bash
+cd apps/ai-backend
+uv venv
+uv pip install -r requirements.txt
+```
+
+2. **FastAPI 서버 실행**:
+```bash
+uvicorn main:app --reload --port 8000
+```
+
+3. **환경 변수 설정** (선택사항):
+   `apps/web/.env.local`에 다음을 추가:
+```bash
+FASTAPI_URL=http://localhost:8000
+```
+
+FastAPI 서버가 실행되지 않으면 시뮬레이터는 폴백 모드로 동작합니다.
+
 
 
 
@@ -75,7 +99,8 @@ Open [http://localhost:3001](http://localhost:3001) in your browser to see your 
 ```
 my-better-t-app/
 ├── apps/
-│   └── web/         # Fullstack application (Next.js)
+│   ├── web/         # Fullstack application (Next.js)
+│   └── ai-backend/  # Python FastAPI 예측 서비스
 ├── packages/
 │   ├── api/         # API layer / business logic
 │   └── db/          # Database schema & queries
