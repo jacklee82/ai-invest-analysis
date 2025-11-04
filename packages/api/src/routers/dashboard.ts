@@ -58,8 +58,24 @@ export const dashboardRouter = router({
 		console.log("[Dashboard] 회수율:", recoupRate);
 
 		// 리스크 건수 계산 (경고 상태)
-		// TODO: risk_flag 테이블에서 실제 경고 건수 조회
-		const riskCount = 0;
+		// 경고 조건: (경과 기간 > 총 계약 기간 / 2) && (회수율 < 0.5)
+		const allProjects = await db.select().from(project);
+		const now = new Date();
+		const riskCount = allProjects.filter((p) => {
+			const totalContractMonths = p.baseContractMonths + p.extendedMonths;
+			const contractStart = new Date(p.contractStartDate);
+			const elapsedMonths = 
+				(now.getFullYear() - contractStart.getFullYear()) * 12 +
+				(now.getMonth() - contractStart.getMonth());
+			const totalInvestment = p.initialInvestment + p.additionalInvestment;
+			const recoupRate = totalInvestment > 0 
+				? p.totalRecouped / totalInvestment 
+				: 0;
+			const elapsedRatio = totalContractMonths > 0 
+				? elapsedMonths / totalContractMonths 
+				: 0;
+			return elapsedRatio > 0.5 && recoupRate < 0.5;
+		}).length;
 
 		// YoY 계산 (전년 동월 대비)
 		// TODO: 전년 데이터와 비교하여 증감률 계산
