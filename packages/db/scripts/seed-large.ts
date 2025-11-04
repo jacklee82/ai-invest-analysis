@@ -1,12 +1,28 @@
 import dotenv from "dotenv";
+import { resolve } from "path";
 import { db } from "../src/index";
 import { project, cashflowMonthly, BusinessType } from "../src/schema";
 import { v4 as uuidv4 } from "uuid";
 
-// 환경변수 로드
-dotenv.config({
-	path: "../../apps/web/.env",
-});
+// 환경변수 로드 (.env.local 우선, Next.js와 동일한 우선순위)
+const envLocalPath = resolve(__dirname, "../../apps/web/.env.local");
+const envPath = resolve(__dirname, "../../apps/web/.env");
+
+// .env.local 우선 시도
+try {
+	dotenv.config({ path: envLocalPath });
+} catch (err) {
+	// .env.local이 없으면 .env 시도
+}
+
+// .env.local에 DATABASE_URL이 없으면 .env 시도
+if (!process.env.DATABASE_URL) {
+	try {
+		dotenv.config({ path: envPath });
+	} catch (err) {
+		// .env도 없으면 기본값 사용
+	}
+}
 
 /**
  * 대량 시드 데이터 생성 스크립트
