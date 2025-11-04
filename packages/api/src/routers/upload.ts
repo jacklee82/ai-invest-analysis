@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../index";
+import { uploadJob, UploadStatus } from "@my-better-t-app/db";
+import { eq, desc } from "drizzle-orm";
 
 /**
  * 업로드 라우터
@@ -62,22 +64,42 @@ export const uploadRouter = router({
 				pageSize: z.number().min(1).max(100).default(20),
 			}),
 		)
-		.query(async ({ input }) => {
-			// TODO: DB에서 실제 데이터 조회
+		.query(async ({ ctx, input }) => {
+			const { db } = ctx;
+
+			if (!db) {
+				throw new Error("데이터베이스 연결이 없습니다.");
+			}
+
+			// 전체 개수 조회
+			const allJobs = await db.select().from(uploadJob).orderBy(desc(uploadJob.startedAt));
+			const total = allJobs.length;
+
+			// 페이지네이션
+			const startIndex = (input.page - 1) * input.pageSize;
+			const endIndex = startIndex + input.pageSize;
+			const paginatedJobs = allJobs.slice(startIndex, endIndex);
+
 			return {
-				items: [] as Array<{
-					jobId: string;
-					fileName: string;
-					source: "A" | "B";
-					status: "success" | "failed" | "pending" | "processing";
-					rowsParsed: number;
-					rowsLoaded: number;
-					startedAt: string;
-					endedAt: string | null;
-				}>,
-				total: 0,
+				items: paginatedJobs.map((job) => ({
+					jobId: job.jobId,
+					fileName: job.fileName,
+					source: job.source as "A" | "B",
+					status: job.status as
+						| "success"
+						| "failed"
+						| "pending"
+						| "processing",
+					rowsParsed: job.rowsParsed,
+					rowsLoaded: job.rowsLoaded,
+					startedAt: job.startedAt.toISOString(),
+					endedAt: job.endedAt?.toISOString() || null,
+					errorMessage: job.errorMessage || null,
+				})),
+				total,
 				page: input.page,
 				pageSize: input.pageSize,
+				totalPages: Math.ceil(total / input.pageSize),
 			};
 		}),
 });
