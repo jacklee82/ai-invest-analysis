@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "@/utils/trpc";
 import { KPICard } from "@/components/dashboard/kpi-card";
@@ -20,6 +21,33 @@ export default function DashboardPage() {
 	);
 	const trends = useQuery(trpc.dashboard.getTrends.queryOptions());
 
+	// 디버깅: React Query 상태 확인
+	useEffect(() => {
+		console.log("[Dashboard Page] ===== React Query 상태 =====");
+		console.log("summary.isLoading:", summary.isLoading);
+		console.log("summary.isError:", summary.isError);
+		console.log("summary.isSuccess:", summary.isSuccess);
+		console.log("summary.data:", summary.data);
+		console.log("summary.error:", summary.error);
+		
+		if (summary.data) {
+			console.log("[Dashboard Page] ===== summary.data 상세 =====");
+			console.log("totalInvestment:", summary.data.totalInvestment, "타입:", typeof summary.data.totalInvestment);
+			console.log("recoupRate:", summary.data.recoupRate, "타입:", typeof summary.data.recoupRate);
+			console.log("riskCount:", summary.data.riskCount, "타입:", typeof summary.data.riskCount);
+			console.log("yoy:", summary.data.yoy);
+			console.log("전체 데이터 (JSON):", JSON.stringify(summary.data, null, 2));
+		}
+		
+		console.log("businessComparison.isLoading:", businessComparison.isLoading);
+		console.log("businessComparison.data 길이:", businessComparison.data?.length);
+		console.log("businessComparison.data:", businessComparison.data);
+		
+		console.log("trends.isLoading:", trends.isLoading);
+		console.log("trends.data 길이:", trends.data?.length);
+		console.log("trends.data:", trends.data);
+	}, [summary.data, summary.isLoading, summary.isError, businessComparison.data, trends.data]);
+
 	return (
 		<div className="container mx-auto max-w-7xl px-4 py-6">
 			<div className="mb-6">
@@ -37,23 +65,27 @@ export default function DashboardPage() {
 						<Skeleton className="h-32" />
 						<Skeleton className="h-32" />
 					</>
+				) : summary.error ? (
+					<div className="col-span-3 text-center text-red-600">
+						에러: {summary.error.message || "데이터를 불러올 수 없습니다."}
+					</div>
 				) : summary.data ? (
 					<>
 						<KPICard
 							title="누적 투자금"
-							value={summary.data.totalInvestment}
+							value={summary.data.totalInvestment ?? 0}
 							unit="원"
-							yoy={summary.data.yoy.totalInvestment}
+							yoy={summary.data.yoy?.totalInvestment}
 						/>
 						<KPICard
 							title="누적 회수율"
-							value={summary.data.recoupRate}
+							value={summary.data.recoupRate ?? 0}
 							unit="%"
-							yoy={summary.data.yoy.recoupRate}
+							yoy={summary.data.yoy?.recoupRate}
 						/>
 						<KPICard
 							title="현재 리스크 건수"
-							value={summary.data.riskCount}
+							value={summary.data.riskCount ?? 0}
 							onClick={() => router.push("/risk")}
 						/>
 					</>

@@ -17,6 +17,7 @@ export async function createContext(req: NextRequest) {
 		};
 	} catch (error) {
 		console.error("DB 초기화 실패:", error);
+		console.error("에러 상세:", error instanceof Error ? error.stack : error);
 		// 에러 발생 시에도 기본 컨텍스트 반환
 		return {
 			session: null,

@@ -16,6 +16,12 @@ export async function GET(req: NextRequest) {
 		onError({ error, path }) {
 			console.error(`tRPC 에러 [${path}]:`, error);
 		},
+		responseMeta({ paths, type, errors }) {
+			if (paths?.includes("dashboard.getSummary")) {
+				console.log("[tRPC API] dashboard.getSummary 요청 처리됨");
+			}
+			return {};
+		},
 	});
 }
 
@@ -27,6 +33,12 @@ export async function POST(req: NextRequest) {
 		createContext: () => createContext(req),
 		onError({ error, path }) {
 			console.error(`tRPC 에러 [${path}]:`, error);
+		},
+		responseMeta({ paths, type, errors }) {
+			if (paths?.includes("dashboard.getSummary")) {
+				console.log("[tRPC API] dashboard.getSummary 요청 처리됨");
+			}
+			return {};
 		},
 	});
 }
