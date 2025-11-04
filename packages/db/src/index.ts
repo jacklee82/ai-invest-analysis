@@ -86,3 +86,4 @@ export const db = drizzle(client, { schema });
 
 // 스키마 export (다른 패키지에서 사용 가능하도록)
 export * from "./schema";
+export { eq, and, or, sql, inArray, asc, desc, gte, lte } from "drizzle-orm";
