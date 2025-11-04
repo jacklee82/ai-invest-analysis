@@ -9,6 +9,41 @@ import { useRouter } from "next/navigation";
 import ReactECharts from "echarts-for-react";
 
 /**
+ * 차트 래퍼 컴포넌트
+ * 그래프가 박스 안에 꽉 차도록 최적화된 레이아웃
+ */
+function ChartWrapper({
+	title,
+	children,
+	isLoading,
+	hasData,
+}: {
+	title: string;
+	children: React.ReactNode;
+	isLoading: boolean;
+	hasData: boolean;
+}) {
+	return (
+		<Card className="flex flex-col h-full p-0 overflow-hidden">
+			<CardHeader className="px-6 pt-6 pb-4 flex-shrink-0">
+				<CardTitle className="text-lg">{title}</CardTitle>
+			</CardHeader>
+			<CardContent className="flex-1 p-0 min-h-0">
+				{isLoading ? (
+					<Skeleton className="h-full w-full" />
+				) : !hasData ? (
+					<div className="flex items-center justify-center h-full text-center text-muted-foreground py-8">
+						데이터가 없습니다.
+					</div>
+				) : (
+					<div className="h-full w-full">{children}</div>
+				)}
+			</CardContent>
+		</Card>
+	);
+}
+
+/**
  * 대시보드 페이지
  * Module 1: 통합 대시보드 (P1 - 경영진)
  * 경영진의 빠른 현황 파악을 위한 모듈
@@ -102,421 +137,381 @@ export default function DashboardPage() {
 			</div>
 
 			{/* 차트 섹션 (3x2 그리드) */}
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+			<div
+				className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
+				style={{ gridAutoRows: "minmax(350px, auto)" }}
+			>
 				{/* 1. 투자유형별 매출 (파이차트) */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-lg">투자유형별 매출</CardTitle>
-					</CardHeader>
-					<CardContent className="p-6">
-						{businessTypeRevenue.isLoading ? (
-							<Skeleton className="h-64" />
-						) : businessTypeRevenue.data && businessTypeRevenue.data.length > 0 ? (
-							<ReactECharts
-								option={{
-									tooltip: {
-										trigger: "item",
-										formatter: (params: any) => {
-											return `${params.name}<br/>${formatCurrency(params.value)} (${params.percent}%)`;
+				<ChartWrapper
+					title="투자유형별 매출"
+					isLoading={businessTypeRevenue.isLoading}
+					hasData={!!(businessTypeRevenue.data && businessTypeRevenue.data.length > 0)}
+				>
+					<ReactECharts
+						option={{
+							tooltip: {
+								trigger: "item",
+								formatter: (params: any) => {
+									return `${params.name}<br/>${formatCurrency(params.value)} (${params.percent}%)`;
+								},
+							},
+							legend: {
+								orient: "vertical",
+								left: "8%",
+								top: "middle",
+							},
+							series: [
+								{
+									name: "매출",
+									type: "pie",
+									radius: ["40%", "70%"],
+									center: ["60%", "50%"],
+									avoidLabelOverlap: false,
+									itemStyle: {
+										borderRadius: 10,
+										borderColor: "#fff",
+										borderWidth: 2,
+									},
+									label: {
+										show: true,
+										formatter: "{b}: {d}%",
+									},
+									emphasis: {
+										label: {
+											show: true,
+											fontSize: 14,
+											fontWeight: "bold",
 										},
 									},
-									legend: {
-										orient: "vertical",
-										left: "left",
-										top: "middle",
-									},
-									series: [
-										{
-											name: "매출",
-											type: "pie",
-											radius: ["40%", "70%"],
-											avoidLabelOverlap: false,
-											itemStyle: {
-												borderRadius: 10,
-												borderColor: "#fff",
-												borderWidth: 2,
-											},
-											label: {
-												show: true,
-												formatter: "{b}: {d}%",
-											},
-											emphasis: {
-												label: {
-													show: true,
-													fontSize: 14,
-													fontWeight: "bold",
-												},
-											},
-											data: businessTypeRevenue.data.map((item) => ({
-												value: item.revenue,
-												name: item.businessType,
-											})),
-										},
-									],
-								}}
-								style={{ height: "300px" }}
-							/>
-						) : (
-							<div className="text-center text-muted-foreground py-8">
-								데이터가 없습니다.
-							</div>
-						)}
-					</CardContent>
-				</Card>
+									data: businessTypeRevenue.data!.map((item) => ({
+										value: item.revenue,
+										name: item.businessType,
+									})),
+								},
+							],
+						}}
+						style={{ height: "100%", width: "100%" }}
+						opts={{ renderer: "svg" }}
+					/>
+				</ChartWrapper>
 
 				{/* 2. 월별 투자금 */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-lg">월별 투자금</CardTitle>
-					</CardHeader>
-					<CardContent className="p-6">
-						{monthlyInvestment.isLoading ? (
-							<Skeleton className="h-64" />
-						) : monthlyInvestment.data && monthlyInvestment.data.length > 0 ? (
-							<ReactECharts
-								option={{
-									tooltip: {
-										trigger: "axis",
-										formatter: (params: any) => {
-											const param = params[0];
-											return `${param.name}<br/>${formatCurrency(param.value)}`;
+				<ChartWrapper
+					title="월별 투자금"
+					isLoading={monthlyInvestment.isLoading}
+					hasData={!!(monthlyInvestment.data && monthlyInvestment.data.length > 0)}
+				>
+					<ReactECharts
+						option={{
+							tooltip: {
+								trigger: "axis",
+								formatter: (params: any) => {
+									const param = params[0];
+									return `${param.name}<br/>${formatCurrency(param.value)}`;
+								},
+							},
+							xAxis: {
+								type: "category",
+								data: monthlyInvestment.data!.map((item) => item.yyyymm),
+								axisLabel: {
+									rotate: 45,
+								},
+							},
+							yAxis: {
+								type: "value",
+								axisLabel: {
+									formatter: (value: number) => {
+										if (value >= 100000000) {
+											return `${(value / 100000000).toFixed(1)}억`;
+										}
+										if (value >= 10000) {
+											return `${(value / 10000).toFixed(0)}만`;
+										}
+										return value.toLocaleString();
+									},
+								},
+							},
+							series: [
+								{
+									name: "투자금",
+									type: "line",
+									data: monthlyInvestment.data!.map((item) => item.investment),
+									itemStyle: { color: "#3b82f6" },
+									smooth: true,
+									areaStyle: {
+										color: {
+											type: "linear",
+											x: 0,
+											y: 0,
+											x2: 0,
+											y2: 1,
+											colorStops: [
+												{ offset: 0, color: "rgba(59, 130, 246, 0.3)" },
+												{ offset: 1, color: "rgba(59, 130, 246, 0.1)" },
+											],
 										},
 									},
-									xAxis: {
-										type: "category",
-										data: monthlyInvestment.data.map((item) => item.yyyymm),
-										axisLabel: {
-											rotate: 45,
-										},
-									},
-									yAxis: {
-										type: "value",
-										axisLabel: {
-											formatter: (value: number) => {
-												if (value >= 100000000) {
-													return `${(value / 100000000).toFixed(1)}억`;
-												}
-												if (value >= 10000) {
-													return `${(value / 10000).toFixed(0)}만`;
-												}
-												return value.toLocaleString();
-											},
-										},
-									},
-									series: [
-										{
-											name: "투자금",
-											type: "line",
-											data: monthlyInvestment.data.map((item) => item.investment),
-											itemStyle: { color: "#3b82f6" },
-											smooth: true,
-											areaStyle: {
-												color: {
-													type: "linear",
-													x: 0,
-													y: 0,
-													x2: 0,
-													y2: 1,
-													colorStops: [
-														{ offset: 0, color: "rgba(59, 130, 246, 0.3)" },
-														{ offset: 1, color: "rgba(59, 130, 246, 0.1)" },
-													],
-												},
-											},
-										},
-									],
-									grid: {
-										left: "3%",
-										right: "4%",
-										bottom: "15%",
-										containLabel: true,
-									},
-								}}
-								style={{ height: "300px" }}
-							/>
-						) : (
-							<div className="text-center text-muted-foreground py-8">
-								데이터가 없습니다.
-							</div>
-						)}
-					</CardContent>
-				</Card>
+								},
+							],
+							grid: {
+								left: "8%",
+								right: "8%",
+								top: "10%",
+								bottom: "20%",
+								containLabel: true,
+							},
+						}}
+						style={{ height: "100%", width: "100%" }}
+						opts={{ renderer: "svg" }}
+					/>
+				</ChartWrapper>
 
 				{/* 3. 월별 매출 (막대) */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-lg">월별 매출</CardTitle>
-					</CardHeader>
-					<CardContent className="p-6">
-						{trends.isLoading ? (
-							<Skeleton className="h-64" />
-						) : trends.data && trends.data.length > 0 ? (
-							<ReactECharts
-								option={{
-									tooltip: {
-										trigger: "axis",
-										formatter: (params: any) => {
-											const param = params[0];
-											return `${param.name}<br/>${formatCurrency(param.value)}`;
-										},
+				<ChartWrapper
+					title="월별 매출"
+					isLoading={trends.isLoading}
+					hasData={!!(trends.data && trends.data.length > 0)}
+				>
+					<ReactECharts
+						option={{
+							tooltip: {
+								trigger: "axis",
+								formatter: (params: any) => {
+									const param = params[0];
+									return `${param.name}<br/>${formatCurrency(param.value)}`;
+								},
+							},
+							xAxis: {
+								type: "category",
+								data: trends.data!.map((t) => t.yyyymm),
+								axisLabel: {
+									rotate: 45,
+								},
+							},
+							yAxis: {
+								type: "value",
+								axisLabel: {
+									formatter: (value: number) => {
+										if (value >= 100000000) {
+											return `${(value / 100000000).toFixed(1)}억`;
+										}
+										if (value >= 10000) {
+											return `${(value / 10000).toFixed(0)}만`;
+										}
+										return value.toLocaleString();
 									},
-									xAxis: {
-										type: "category",
-										data: trends.data.map((t) => t.yyyymm),
-										axisLabel: {
-											rotate: 45,
-										},
-									},
-									yAxis: {
-										type: "value",
-										axisLabel: {
-											formatter: (value: number) => {
-												if (value >= 100000000) {
-													return `${(value / 100000000).toFixed(1)}억`;
-												}
-												if (value >= 10000) {
-													return `${(value / 10000).toFixed(0)}만`;
-												}
-												return value.toLocaleString();
-											},
-										},
-									},
-									series: [
-										{
-											name: "매출액",
-											type: "bar",
-											data: trends.data.map((t) => t.revenue),
-											itemStyle: { color: "#10b981" },
-										},
-									],
-									grid: {
-										left: "3%",
-										right: "4%",
-										bottom: "15%",
-										containLabel: true,
-									},
-								}}
-								style={{ height: "300px" }}
-							/>
-						) : (
-							<div className="text-center text-muted-foreground py-8">
-								데이터가 없습니다.
-							</div>
-						)}
-					</CardContent>
-				</Card>
+								},
+							},
+							series: [
+								{
+									name: "매출액",
+									type: "bar",
+									data: trends.data!.map((t) => t.revenue),
+									itemStyle: { color: "#10b981" },
+								},
+							],
+							grid: {
+								left: "8%",
+								right: "8%",
+								top: "10%",
+								bottom: "20%",
+								containLabel: true,
+							},
+						}}
+						style={{ height: "100%", width: "100%" }}
+						opts={{ renderer: "svg" }}
+					/>
+				</ChartWrapper>
 
 				{/* 4. 음반 매출 순위 (가로막대) */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-lg">음반 매출 순위</CardTitle>
-					</CardHeader>
-					<CardContent className="p-6">
-						{albumRevenueRanking.isLoading ? (
-							<Skeleton className="h-64" />
-						) : albumRevenueRanking.data && albumRevenueRanking.data.length > 0 ? (
-							<ReactECharts
-								option={{
-									tooltip: {
-										trigger: "axis",
-										axisPointer: { type: "shadow" },
+				<ChartWrapper
+					title="음반 매출 순위"
+					isLoading={albumRevenueRanking.isLoading}
+					hasData={!!(albumRevenueRanking.data && albumRevenueRanking.data.length > 0)}
+				>
+					<ReactECharts
+						option={{
+							tooltip: {
+								trigger: "axis",
+								axisPointer: { type: "shadow" },
+								formatter: (params: any) => {
+									const param = params[0];
+									return `${param.name}<br/>${formatCurrency(param.value)}`;
+								},
+							},
+							grid: {
+								left: "25%",
+								right: "8%",
+								top: "10%",
+								bottom: "10%",
+								containLabel: true,
+							},
+							xAxis: {
+								type: "value",
+								axisLabel: {
+									formatter: (value: number) => {
+										if (value >= 100000000) {
+											return `${(value / 100000000).toFixed(1)}억`;
+										}
+										if (value >= 10000) {
+											return `${(value / 10000).toFixed(0)}만`;
+										}
+										return value.toLocaleString();
+									},
+								},
+							},
+							yAxis: {
+								type: "category",
+								data: albumRevenueRanking.data!.map((item) => item.projectName),
+								axisLabel: {
+									formatter: (value: string) => {
+										return value.length > 12 ? value.substring(0, 12) + "..." : value;
+									},
+								},
+							},
+							series: [
+								{
+									name: "매출",
+									type: "bar",
+									data: albumRevenueRanking.data!.map((item) => item.revenue),
+									itemStyle: { color: "#f59e0b" },
+									label: {
+										show: true,
+										position: "right",
 										formatter: (params: any) => {
-											const param = params[0];
-											return `${param.name}<br/>${formatCurrency(param.value)}`;
+											return formatCurrency(params.value);
 										},
 									},
-									grid: {
-										left: "30%",
-										right: "4%",
-										bottom: "3%",
-										containLabel: true,
-									},
-									xAxis: {
-										type: "value",
-										axisLabel: {
-											formatter: (value: number) => {
-												if (value >= 100000000) {
-													return `${(value / 100000000).toFixed(1)}억`;
-												}
-												if (value >= 10000) {
-													return `${(value / 10000).toFixed(0)}만`;
-												}
-												return value.toLocaleString();
-											},
-										},
-									},
-									yAxis: {
-										type: "category",
-										data: albumRevenueRanking.data.map((item) => item.projectName),
-										axisLabel: {
-											formatter: (value: string) => {
-												return value.length > 15 ? value.substring(0, 15) + "..." : value;
-											},
-										},
-									},
-									series: [
-										{
-											name: "매출",
-											type: "bar",
-											data: albumRevenueRanking.data.map((item) => item.revenue),
-											itemStyle: { color: "#f59e0b" },
-											label: {
-												show: true,
-												position: "right",
-												formatter: (params: any) => {
-													return formatCurrency(params.value);
-												},
-											},
-										},
-									],
-								}}
-								style={{ height: "300px" }}
-							/>
-						) : (
-							<div className="text-center text-muted-foreground py-8">
-								데이터가 없습니다.
-							</div>
-						)}
-					</CardContent>
-				</Card>
+								},
+							],
+						}}
+						style={{ height: "100%", width: "100%" }}
+						opts={{ renderer: "svg" }}
+					/>
+				</ChartWrapper>
 
 				{/* 5. 기획사 매출 비중 (박스 비중 형태) */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-lg">기획사 매출 비중</CardTitle>
-					</CardHeader>
-					<CardContent className="p-6">
-						{companyRevenueShare.isLoading ? (
-							<Skeleton className="h-64" />
-						) : companyRevenueShare.data && companyRevenueShare.data.length > 0 ? (
-							<ReactECharts
-								option={{
-									tooltip: {
-										trigger: "item",
+				<ChartWrapper
+					title="기획사 매출 비중"
+					isLoading={companyRevenueShare.isLoading}
+					hasData={!!(companyRevenueShare.data && companyRevenueShare.data.length > 0)}
+				>
+					<ReactECharts
+						option={{
+							tooltip: {
+								trigger: "item",
+								formatter: (params: any) => {
+									return `${params.name}<br/>매출: ${formatCurrency(params.value)}<br/>비중: ${params.percent}%`;
+								},
+							},
+							series: [
+								{
+									name: "기획사 매출",
+									type: "treemap",
+									data: companyRevenueShare.data!.map((item) => ({
+										value: item.revenue,
+										name: item.companyName,
+									})),
+									label: {
+										show: true,
 										formatter: (params: any) => {
-											return `${params.name}<br/>매출: ${formatCurrency(params.value)}<br/>비중: ${params.percent}%`;
+											return `${params.name}\n${params.value ? formatCurrency(params.value) : ""}`;
 										},
 									},
-									series: [
-										{
-											name: "기획사 매출",
-											type: "treemap",
-											data: companyRevenueShare.data.map((item) => ({
-												value: item.revenue,
-												name: item.companyName,
-											})),
-											label: {
-												show: true,
-												formatter: (params: any) => {
-													return `${params.name}\n${params.value ? formatCurrency(params.value) : ""}`;
-												},
-											},
-											upperLabel: {
-												show: true,
-												height: 30,
-											},
-											itemStyle: {
-												borderColor: "#fff",
-												borderWidth: 2,
-											},
-											emphasis: {
-												itemStyle: {
-													borderColor: "#333",
-													borderWidth: 3,
-												},
-											},
+									upperLabel: {
+										show: true,
+										height: 30,
+									},
+									itemStyle: {
+										borderColor: "#fff",
+										borderWidth: 2,
+									},
+									emphasis: {
+										itemStyle: {
+											borderColor: "#333",
+											borderWidth: 3,
 										},
-									],
-								}}
-								style={{ height: "300px" }}
-							/>
-						) : (
-							<div className="text-center text-muted-foreground py-8">
-								데이터가 없습니다.
-							</div>
-						)}
-					</CardContent>
-				</Card>
+									},
+								},
+							],
+						}}
+						style={{ height: "100%", width: "100%" }}
+						opts={{ renderer: "svg" }}
+					/>
+				</ChartWrapper>
 
 				{/* 6. 리스크 순위 */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-lg">리스크 순위</CardTitle>
-					</CardHeader>
-					<CardContent className="p-6">
-						{riskRanking.isLoading ? (
-							<Skeleton className="h-64" />
-						) : riskRanking.data && riskRanking.data.length > 0 ? (
-							<ReactECharts
-								option={{
-									tooltip: {
-										trigger: "axis",
+				<ChartWrapper
+					title="리스크 순위"
+					isLoading={riskRanking.isLoading}
+					hasData={!!(riskRanking.data && riskRanking.data.length > 0)}
+				>
+					<ReactECharts
+						option={{
+							tooltip: {
+								trigger: "axis",
+								formatter: (params: any) => {
+									const data = params[0].data;
+									return `${data.name}<br/>리스크 점수: ${data.riskScore}<br/>투자금: ${formatCurrency(data.totalInvestment)}<br/>회수율: ${data.recoupRate.toFixed(1)}%`;
+								},
+							},
+							grid: {
+								left: "25%",
+								right: "8%",
+								top: "10%",
+								bottom: "10%",
+								containLabel: true,
+							},
+							xAxis: {
+								type: "value",
+								name: "리스크 점수",
+							},
+							yAxis: {
+								type: "category",
+								data: riskRanking.data!.map((item) => item.projectName),
+								axisLabel: {
+									formatter: (value: string) => {
+										return value.length > 12 ? value.substring(0, 12) + "..." : value;
+									},
+								},
+							},
+							series: [
+								{
+									name: "리스크 점수",
+									type: "bar",
+									data: riskRanking.data!.map((item) => ({
+										value: item.riskScore,
+										name: item.projectName,
+										totalInvestment: item.totalInvestment,
+										recoupRate: item.recoupRate,
+										riskScore: item.riskScore,
+									})),
+									itemStyle: {
+										color: (params: any) => {
+											// 점수가 높을수록 빨간색
+											const maxScore = Math.max(
+												...riskRanking.data!.map((r) => r.riskScore),
+											);
+											const ratio = params.value / maxScore;
+											if (ratio > 0.7) return "#ef4444";
+											if (ratio > 0.4) return "#f59e0b";
+											return "#10b981";
+										},
+									},
+									label: {
+										show: true,
+										position: "right",
 										formatter: (params: any) => {
-											const data = params[0].data;
-											return `${data.name}<br/>리스크 점수: ${data.riskScore}<br/>투자금: ${formatCurrency(data.totalInvestment)}<br/>회수율: ${data.recoupRate.toFixed(1)}%`;
+											return params.value.toFixed(2);
 										},
 									},
-									grid: {
-										left: "30%",
-										right: "4%",
-										bottom: "3%",
-										containLabel: true,
-									},
-									xAxis: {
-										type: "value",
-										name: "리스크 점수",
-									},
-									yAxis: {
-										type: "category",
-										data: riskRanking.data.map((item) => item.projectName),
-										axisLabel: {
-											formatter: (value: string) => {
-												return value.length > 15 ? value.substring(0, 15) + "..." : value;
-											},
-										},
-									},
-									series: [
-										{
-											name: "리스크 점수",
-											type: "bar",
-											data: riskRanking.data.map((item) => ({
-												value: item.riskScore,
-												name: item.projectName,
-												totalInvestment: item.totalInvestment,
-												recoupRate: item.recoupRate,
-												riskScore: item.riskScore,
-											})),
-											itemStyle: {
-												color: (params: any) => {
-													// 점수가 높을수록 빨간색
-													const maxScore = Math.max(
-														...riskRanking.data!.map((r) => r.riskScore),
-													);
-													const ratio = params.value / maxScore;
-													if (ratio > 0.7) return "#ef4444";
-													if (ratio > 0.4) return "#f59e0b";
-													return "#10b981";
-												},
-											},
-											label: {
-												show: true,
-												position: "right",
-												formatter: (params: any) => {
-													return params.value.toFixed(2);
-												},
-											},
-										},
-									],
-								}}
-								style={{ height: "300px" }}
-							/>
-						) : (
-							<div className="text-center text-muted-foreground py-8">
-								데이터가 없습니다.
-							</div>
-						)}
-					</CardContent>
-				</Card>
+								},
+							],
+						}}
+						style={{ height: "100%", width: "100%" }}
+						opts={{ renderer: "svg" }}
+					/>
+				</ChartWrapper>
 			</div>
 		</div>
 	);
