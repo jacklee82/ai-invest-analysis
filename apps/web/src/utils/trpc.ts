@@ -24,7 +24,7 @@ export const queryClient = new QueryClient({
  * tRPC 클라이언트 생성
  * superjson transformer를 사용하여 Date, Map, Set 등 직렬화 지원
  */
-const trpcClient = createTRPCClient<AppRouter>({
+export const trpcClient = createTRPCClient<AppRouter>({
 	links: [
 		httpBatchLink({
 			url: "/api/trpc",
