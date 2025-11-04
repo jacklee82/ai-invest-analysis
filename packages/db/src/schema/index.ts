@@ -7,4 +7,5 @@ export * from "./project";
 export * from "./cashflow-monthly";
 export * from "./risk-flag";
 export * from "./upload-job";
+export * from "./chart-entry";
 

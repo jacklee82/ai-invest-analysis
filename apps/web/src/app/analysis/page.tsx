@@ -86,9 +86,7 @@ export default function AnalysisPage() {
 			<Tabs defaultValue="roi" className="space-y-6">
 				<TabsList>
 					<TabsTrigger value="roi">기획사 ROI</TabsTrigger>
-					<TabsTrigger value="chart" disabled>
-						차트인 가치 (준비중)
-					</TabsTrigger>
+					<TabsTrigger value="chart">차트인 가치</TabsTrigger>
 					<TabsTrigger value="cohort" disabled>
 						코호트 분석 (준비중)
 					</TabsTrigger>
@@ -325,7 +323,364 @@ export default function AnalysisPage() {
 						</CardContent>
 					</Card>
 				</TabsContent>
+
+				{/* 차트인 가치 분석 */}
+				<TabsContent value="chart" className="space-y-6">
+					<ChartValueAnalysis />
+				</TabsContent>
 			</Tabs>
 		</div>
+	);
+}
+
+/**
+ * 차트인 가치 분석 컴포넌트
+ */
+function ChartValueAnalysis() {
+	const chartValueQuery = useQuery(trpc.analysis.getChartValue.queryOptions());
+	const topTracksQuery = useQuery(
+		trpc.analysis.getTopChartTracks.queryOptions({ limit: 10 }),
+	);
+
+	const formatCurrency = (amount: number): string => {
+		if (amount >= 100000000) {
+			return `${(amount / 100000000).toFixed(1)}억원`;
+		}
+		if (amount >= 10000000) {
+			return `${(amount / 10000000).toFixed(1)}천만원`;
+		}
+		if (amount >= 10000) {
+			return `${(amount / 10000).toFixed(0)}만원`;
+		}
+		return `${amount.toLocaleString()}원`;
+	};
+
+	// 회귀 분석 데이터 준비 (스캐터 차트용)
+	const regressionData =
+		chartValueQuery.data && topTracksQuery.data
+			? topTracksQuery.data.map((track) => ({
+					x: track.chartedWeeks,
+					y: track.chartRevenue / 10_000_000, // 천만원 단위
+					name: track.title,
+				}))
+			: [];
+
+	const regressionModel = chartValueQuery.data?.regressionModel;
+
+	return (
+		<>
+			{/* 요약 카드 */}
+			<div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+				<Card>
+					<CardHeader className="pb-2">
+						<CardTitle className="text-sm font-medium text-muted-foreground">
+							평균 1주당 가치
+						</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div className="text-2xl font-bold">
+							{chartValueQuery.isLoading ? (
+								<Skeleton className="h-8 w-24" />
+							) : (
+								`${(chartValueQuery.data?.averageValue ?? 0).toFixed(2)}천만원`
+							)}
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader className="pb-2">
+						<CardTitle className="text-sm font-medium text-muted-foreground">
+							회귀 모델 R²
+						</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div className="text-2xl font-bold">
+							{chartValueQuery.isLoading ? (
+								<Skeleton className="h-8 w-24" />
+							) : (
+								(regressionModel?.r2 ?? 0).toFixed(3)
+							)}
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader className="pb-2">
+						<CardTitle className="text-sm font-medium text-muted-foreground">
+							RMSE
+						</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div className="text-2xl font-bold">
+							{chartValueQuery.isLoading ? (
+								<Skeleton className="h-8 w-24" />
+							) : (
+								`${(regressionModel?.rmse ?? 0).toFixed(2)}천만원`
+							)}
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader className="pb-2">
+						<CardTitle className="text-sm font-medium text-muted-foreground">
+							분석 대상 프로젝트
+						</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div className="text-2xl font-bold">
+							{chartValueQuery.isLoading ? (
+								<Skeleton className="h-8 w-24" />
+							) : (
+								chartValueQuery.data?.totalProjects ?? 0
+							)}
+						</div>
+					</CardContent>
+				</Card>
+			</div>
+
+			{/* 회귀 분석 스캐터 차트 */}
+			<Card className="mb-6">
+				<CardHeader>
+					<CardTitle>차트인 주 수 vs 차트인 수익 (회귀 분석)</CardTitle>
+				</CardHeader>
+				<CardContent>
+					{chartValueQuery.isLoading || topTracksQuery.isLoading ? (
+						<Skeleton className="h-96 w-full" />
+					) : regressionData.length > 0 && regressionModel ? (
+						<ReactECharts
+							option={{
+								tooltip: {
+									trigger: "item",
+									formatter: (params: any) => {
+										return `${params.data.name}<br/>차트인 주 수: ${params.data[0]}주<br/>차트인 수익: ${params.data[1].toFixed(2)}천만원`;
+									},
+								},
+								xAxis: {
+									type: "value",
+									name: "차트인 주 수",
+									nameLocation: "middle",
+									nameGap: 30,
+								},
+								yAxis: {
+									type: "value",
+									name: "차트인 수익 (천만원)",
+									nameLocation: "middle",
+									nameGap: 50,
+								},
+								series: [
+									{
+										name: "프로젝트",
+										type: "scatter",
+										data: regressionData.map((d) => [d.x, d.y]),
+										symbolSize: 10,
+										itemStyle: {
+											color: "#3b82f6",
+											opacity: 0.6,
+										},
+									},
+									{
+										name: "회귀선",
+										type: "line",
+										data: regressionData.length > 0
+											? (() => {
+													const minX = Math.min(...regressionData.map((d) => d.x));
+													const maxX = Math.max(...regressionData.map((d) => d.x));
+													const x1 = minX;
+													const y1 =
+														regressionModel.coefficients.slope * x1 +
+														regressionModel.coefficients.intercept;
+													const x2 = maxX;
+													const y2 =
+														regressionModel.coefficients.slope * x2 +
+														regressionModel.coefficients.intercept;
+													return [
+														[x1, y1],
+														[x2, y2],
+													];
+												})()
+											: [],
+										symbol: "none",
+										lineStyle: {
+											color: "#ef4444",
+											width: 2,
+										},
+									},
+								],
+								grid: {
+									left: "10%",
+									right: "10%",
+									top: "10%",
+									bottom: "15%",
+									containLabel: true,
+								},
+								legend: {
+									data: ["프로젝트", "회귀선"],
+									top: 10,
+								},
+							}}
+							style={{ height: "400px" }}
+						/>
+					) : (
+						<div className="text-center text-muted-foreground py-8">
+							데이터가 없습니다.
+						</div>
+					)}
+					{regressionModel && (
+						<div className="mt-4 text-sm text-muted-foreground">
+							회귀식: y ={" "}
+							{regressionModel.coefficients.slope.toFixed(2)}x +{" "}
+							{regressionModel.coefficients.intercept.toFixed(2)}
+						</div>
+					)}
+				</CardContent>
+			</Card>
+
+			{/* Top 10 차트인 수익 차트 */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Top 10 차트인 수익</CardTitle>
+				</CardHeader>
+				<CardContent>
+					{topTracksQuery.isLoading ? (
+						<Skeleton className="h-96 w-full" />
+					) : topTracksQuery.data && topTracksQuery.data.length > 0 ? (
+						<>
+							<ReactECharts
+								option={{
+									tooltip: {
+										trigger: "axis",
+										formatter: (params: any) => {
+											let result = `${params[0].name}<br/>`;
+											params.forEach((param: any) => {
+												if (param.seriesName === "차트인 수익") {
+													result += `${param.seriesName}: ${formatCurrency(param.value)}<br/>`;
+												} else {
+													result += `${param.seriesName}: ${(param.value * 100).toFixed(1)}%<br/>`;
+												}
+											});
+											return result;
+										},
+									},
+									legend: {
+										data: ["차트인 수익", "누적 비율"],
+										top: 10,
+									},
+									xAxis: {
+										type: "category",
+										data: topTracksQuery.data.map((t) => t.title),
+										axisLabel: {
+											rotate: 45,
+											interval: 0,
+										},
+									},
+									yAxis: [
+										{
+											type: "value",
+											name: "차트인 수익 (원)",
+											position: "left",
+											axisLabel: {
+												formatter: (value: number) => {
+													if (value >= 100000000) {
+														return `${(value / 100000000).toFixed(1)}억`;
+													}
+													if (value >= 10000) {
+														return `${(value / 10000).toFixed(0)}만`;
+													}
+													return value.toLocaleString();
+												},
+											},
+										},
+										{
+											type: "value",
+											name: "누적 비율 (%)",
+											position: "right",
+											max: 100,
+											axisLabel: {
+												formatter: "{value}%",
+											},
+										},
+									],
+									series: [
+										{
+											name: "차트인 수익",
+											type: "bar",
+											data: topTracksQuery.data.map((t) => t.chartRevenue),
+											itemStyle: { color: "#3b82f6" },
+										},
+										{
+											name: "누적 비율",
+											type: "line",
+											yAxisIndex: 1,
+											data: (() => {
+												const total = topTracksQuery.data.reduce(
+													(sum, t) => sum + t.chartRevenue,
+													0,
+												);
+												let cumulative = 0;
+												return topTracksQuery.data.map((t) => {
+													cumulative += t.chartRevenue;
+													return (cumulative / total) * 100;
+												});
+											})(),
+											itemStyle: { color: "#ef4444" },
+											smooth: true,
+										},
+									],
+									grid: {
+										left: "3%",
+										right: "4%",
+										bottom: "15%",
+										containLabel: true,
+									},
+								}}
+								style={{ height: "400px" }}
+							/>
+
+							{/* 테이블 */}
+							<div className="mt-6">
+								<Table>
+									<TableHeader>
+										<TableRow>
+											<TableHead>순위</TableHead>
+											<TableHead>곡명</TableHead>
+											<TableHead>기획사</TableHead>
+											<TableHead>차트인 수익</TableHead>
+											<TableHead>차트인 주 수</TableHead>
+											<TableHead>주당 평균</TableHead>
+											<TableHead>최고 순위</TableHead>
+										</TableRow>
+									</TableHeader>
+									<TableBody>
+										{topTracksQuery.data.map((track, index) => (
+											<TableRow key={track.trackId}>
+												<TableCell>{index + 1}</TableCell>
+												<TableCell className="font-medium">
+													{track.title}
+												</TableCell>
+												<TableCell>{track.artist}</TableCell>
+												<TableCell>
+													{formatCurrency(track.chartRevenue)}
+												</TableCell>
+												<TableCell>{track.chartedWeeks}주</TableCell>
+												<TableCell>
+													{formatCurrency(track.averageRevenuePerWeek)}
+												</TableCell>
+												<TableCell>{track.bestRank}위</TableCell>
+											</TableRow>
+										))}
+									</TableBody>
+								</Table>
+							</div>
+						</>
+					) : (
+						<div className="text-center text-muted-foreground py-8">
+							데이터가 없습니다.
+						</div>
+					)}
+				</CardContent>
+			</Card>
+		</>
 	);
 }
