@@ -3,7 +3,6 @@
 	"outputDirectory": "apps/web/.next",
 	"installCommand": "bun install",
 	"framework": "nextjs",
-	"regions": ["icn1"],
-	"ignoreCommand": "git diff --quiet HEAD^ HEAD ./"
+	"regions": ["icn1"]
 }
 
