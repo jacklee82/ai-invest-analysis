@@ -321,6 +321,457 @@ export const analysisRouter = router({
 		}),
 
 	/**
+	 * 코호트 히트맵 데이터
+	 * 계약 시작 월별 코호트의 t+개월 회수율을 히트맵 형식으로 반환
+	 */
+	getCohortHeatmap: publicProcedure
+		.input(
+			z
+				.object({
+					businessType: z
+						.enum(["선급투자", "일반투자", "OST", "음반", "전체"])
+						.optional(),
+					startMonth: z.string().optional(), // YYYY-MM
+					endMonth: z.string().optional(), // YYYY-MM
+				})
+				.optional(),
+		)
+		.query(async ({ ctx, input }) => {
+			const { db } = ctx;
+
+			if (!db) {
+				throw new Error("데이터베이스 연결이 없습니다.");
+			}
+
+			// 1. 필터 조건에 맞는 프로젝트 조회
+			let projectsQuery = db.select().from(project);
+
+			if (input?.businessType && input.businessType !== "전체") {
+				projectsQuery = projectsQuery.where(
+					eq(project.businessType, input.businessType),
+				);
+			}
+
+			if (input?.startMonth) {
+				projectsQuery = projectsQuery.where(
+					gte(project.contractStartDate, `${input.startMonth}-01`),
+				);
+			}
+
+			if (input?.endMonth) {
+				// YYYY-MM -> YYYY-MM의 마지막 날
+				const [year, month] = input.endMonth.split("-").map(Number);
+				const lastDay = new Date(year, month, 0).getDate();
+				projectsQuery = projectsQuery.where(
+					lte(project.contractStartDate, `${input.endMonth}-${lastDay}`),
+				);
+			}
+
+			const projects = await projectsQuery;
+
+			if (projects.length === 0) {
+				return {
+					cohorts: [],
+					months: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+					data: [],
+				};
+			}
+
+			// 2. 코호트별로 프로젝트 그룹화
+			const cohortMap = new Map<
+				string,
+				Array<{
+					projectId: string;
+					contractStartDate: string;
+					totalInvestment: number;
+				}>
+			>();
+
+			for (const proj of projects) {
+				const cohort = proj.contractStartDate.substring(0, 7); // YYYY-MM
+				if (!cohortMap.has(cohort)) {
+					cohortMap.set(cohort, []);
+				}
+				cohortMap.get(cohort)!.push({
+					projectId: proj.projectId,
+					contractStartDate: proj.contractStartDate,
+					totalInvestment:
+						proj.initialInvestment + proj.additionalInvestment,
+				});
+			}
+
+			// 3. 코호트 정렬 (최신순)
+			const cohorts = Array.from(cohortMap.keys()).sort().reverse();
+
+			// 4. 각 코호트별 t+개월 회수율 계산
+			const months = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+			const heatmapData: Array<{
+				cohort: string;
+				month: number;
+				value: number;
+				projectCount: number;
+			}> = [];
+
+			for (const cohort of cohorts) {
+				const cohortProjects = cohortMap.get(cohort)!;
+
+				for (const month of months) {
+					const rates: number[] = [];
+					let validCount = 0;
+
+					for (const proj of cohortProjects) {
+						// 계약 시작일부터 t개월 후의 날짜 계산
+						const [startYear, startMonth, startDay] = proj.contractStartDate
+							.split("-")
+							.map(Number);
+						const targetDate = new Date(startYear, startMonth - 1, startDay);
+						targetDate.setMonth(targetDate.getMonth() + month);
+
+						// 해당 월까지의 누적 회수금 계산
+						const targetMonth = `${targetDate.getFullYear()}-${String(
+							targetDate.getMonth() + 1,
+						).padStart(2, "0")}`;
+
+						// 계약 시작일부터 목표 월까지의 현금흐름 조회
+						const startMonthStr = proj.contractStartDate.substring(0, 7);
+						const cashflows = await db
+							.select({
+								recoupAmount: cashflowMonthly.recoupAmount,
+							})
+							.from(cashflowMonthly)
+							.where(
+								and(
+									eq(cashflowMonthly.projectId, proj.projectId),
+									gte(cashflowMonthly.yyyymm, startMonthStr),
+									lte(cashflowMonthly.yyyymm, targetMonth),
+								),
+							);
+
+						const cumulativeRecoup = cashflows.reduce(
+							(sum, cf) => sum + (cf.recoupAmount ?? 0),
+							0,
+						);
+
+						// 회수율 계산
+						if (proj.totalInvestment > 0) {
+							const rate = (cumulativeRecoup / proj.totalInvestment) * 100;
+							if (!isNaN(rate)) {
+								rates.push(rate);
+								validCount++;
+							}
+						}
+					}
+
+					// 평균 회수율 계산
+					const averageRate =
+						rates.length > 0
+							? rates.reduce((sum, r) => sum + r, 0) / rates.length
+							: 0;
+
+					heatmapData.push({
+						cohort,
+						month,
+						value: averageRate,
+						projectCount: validCount,
+					});
+				}
+			}
+
+			return {
+				cohorts,
+				months,
+				data: heatmapData,
+			};
+		}),
+
+	/**
+	 * 코호트 비교 데이터
+	 * 선택한 코호트들의 회수율 추이를 라인 차트용으로 반환
+	 */
+	getCohortComparison: publicProcedure
+		.input(
+			z
+				.object({
+					cohorts: z.array(z.string()).optional(), // 선택한 코호트만
+					businessType: z
+						.enum(["선급투자", "일반투자", "OST", "음반", "전체"])
+						.optional(),
+				})
+				.optional(),
+		)
+		.query(async ({ ctx, input }) => {
+			const { db } = ctx;
+
+			if (!db) {
+				throw new Error("데이터베이스 연결이 없습니다.");
+			}
+
+			// 1. 필터 조건에 맞는 프로젝트 조회
+			let projectsQuery = db.select().from(project);
+
+			if (input?.businessType && input.businessType !== "전체") {
+				projectsQuery = projectsQuery.where(
+					eq(project.businessType, input.businessType),
+				);
+			}
+
+			const projects = await projectsQuery;
+
+			if (projects.length === 0) {
+				return {
+					cohorts: [],
+					months: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+					series: [],
+				};
+			}
+
+			// 2. 코호트별로 프로젝트 그룹화
+			const cohortMap = new Map<
+				string,
+				Array<{
+					projectId: string;
+					contractStartDate: string;
+					totalInvestment: number;
+				}>
+			>();
+
+			for (const proj of projects) {
+				const cohort = proj.contractStartDate.substring(0, 7);
+				if (!cohortMap.has(cohort)) {
+					cohortMap.set(cohort, []);
+				}
+				cohortMap.get(cohort)!.push({
+					projectId: proj.projectId,
+					contractStartDate: proj.contractStartDate,
+					totalInvestment:
+						proj.initialInvestment + proj.additionalInvestment,
+				});
+			}
+
+			// 3. 선택한 코호트 필터링 (없으면 전체)
+			let selectedCohorts = Array.from(cohortMap.keys());
+			if (input?.cohorts && input.cohorts.length > 0) {
+				selectedCohorts = selectedCohorts.filter((c) =>
+					input.cohorts!.includes(c),
+				);
+			}
+
+			selectedCohorts.sort().reverse(); // 최신순
+
+			const months = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+			// 4. 각 코호트별 회수율 추이 계산
+			const series = await Promise.all(
+				selectedCohorts.map(async (cohort) => {
+					const cohortProjects = cohortMap.get(cohort)!;
+					const data: number[] = [];
+
+					for (const month of months) {
+						const rates: number[] = [];
+
+						for (const proj of cohortProjects) {
+							const [startYear, startMonth, startDay] = proj.contractStartDate
+								.split("-")
+								.map(Number);
+							const targetDate = new Date(startYear, startMonth - 1, startDay);
+							targetDate.setMonth(targetDate.getMonth() + month);
+
+							const targetMonth = `${targetDate.getFullYear()}-${String(
+								targetDate.getMonth() + 1,
+							).padStart(2, "0")}`;
+
+							const startMonthStr = proj.contractStartDate.substring(0, 7);
+							const cashflows = await db
+								.select({
+									recoupAmount: cashflowMonthly.recoupAmount,
+								})
+								.from(cashflowMonthly)
+								.where(
+									and(
+										eq(cashflowMonthly.projectId, proj.projectId),
+										gte(cashflowMonthly.yyyymm, startMonthStr),
+										lte(cashflowMonthly.yyyymm, targetMonth),
+									),
+								);
+
+							const cumulativeRecoup = cashflows.reduce(
+								(sum, cf) => sum + (cf.recoupAmount ?? 0),
+								0,
+							);
+
+							if (proj.totalInvestment > 0) {
+								const rate = (cumulativeRecoup / proj.totalInvestment) * 100;
+								if (!isNaN(rate)) {
+									rates.push(rate);
+								}
+							}
+						}
+
+						data.push(
+							rates.length > 0
+								? rates.reduce((sum, r) => sum + r, 0) / rates.length
+								: 0,
+						);
+					}
+
+					return {
+						name: cohort,
+						data,
+					};
+				}),
+			);
+
+			return {
+				cohorts: selectedCohorts,
+				months,
+				series,
+			};
+		}),
+
+	/**
+	 * 코호트 요약 통계
+	 * 코호트별 요약 통계를 반환
+	 */
+	getCohortSummary: publicProcedure
+		.input(
+			z
+				.object({
+					businessType: z
+						.enum(["선급투자", "일반투자", "OST", "음반", "전체"])
+						.optional(),
+				})
+				.optional(),
+		)
+		.query(async ({ ctx, input }) => {
+			const { db } = ctx;
+
+			if (!db) {
+				throw new Error("데이터베이스 연결이 없습니다.");
+			}
+
+			// 1. 필터 조건에 맞는 프로젝트 조회
+			let projectsQuery = db.select().from(project);
+
+			if (input?.businessType && input.businessType !== "전체") {
+				projectsQuery = projectsQuery.where(
+					eq(project.businessType, input.businessType),
+				);
+			}
+
+			const projects = await projectsQuery;
+
+			if (projects.length === 0) {
+				return [];
+			}
+
+			// 2. 코호트별로 프로젝트 그룹화
+			const cohortMap = new Map<
+				string,
+				Array<{
+					projectId: string;
+					contractStartDate: string;
+					totalInvestment: number;
+					totalRecouped: number;
+				}>
+			>();
+
+			for (const proj of projects) {
+				const cohort = proj.contractStartDate.substring(0, 7);
+				if (!cohortMap.has(cohort)) {
+					cohortMap.set(cohort, []);
+				}
+				cohortMap.get(cohort)!.push({
+					projectId: proj.projectId,
+					contractStartDate: proj.contractStartDate,
+					totalInvestment:
+						proj.initialInvestment + proj.additionalInvestment,
+					totalRecouped: proj.totalRecouped,
+				});
+			}
+
+			// 3. 코호트별 요약 통계 계산
+			const summary = await Promise.all(
+				Array.from(cohortMap.entries()).map(async ([cohort, cohortProjects]) => {
+					const totalInvestment = cohortProjects.reduce(
+						(sum, p) => sum + p.totalInvestment,
+						0,
+					);
+					const totalRecouped = cohortProjects.reduce(
+						(sum, p) => sum + p.totalRecouped,
+						0,
+					);
+					const averageRecoupRate =
+						totalInvestment > 0
+							? (totalRecouped / totalInvestment) * 100
+							: 0;
+
+					// 평균 회수 기간 계산 (회수율 100% 달성까지의 개월 수)
+					const recoupMonths: number[] = [];
+					for (const proj of cohortProjects) {
+						if (proj.totalInvestment > 0) {
+							const targetRate = 100;
+							const startMonth = proj.contractStartDate.substring(0, 7);
+
+							// 월별 회수율을 계산하여 100% 달성 시점 찾기
+							for (let month = 0; month <= 24; month++) {
+								const [startYear, startMonth, startDay] = proj.contractStartDate
+									.split("-")
+									.map(Number);
+								const targetDate = new Date(startYear, startMonth - 1, startDay);
+								targetDate.setMonth(targetDate.getMonth() + month);
+
+								const targetMonth = `${targetDate.getFullYear()}-${String(
+									targetDate.getMonth() + 1,
+								).padStart(2, "0")}`;
+
+								const cashflows = await db
+									.select({
+										recoupAmount: cashflowMonthly.recoupAmount,
+									})
+									.from(cashflowMonthly)
+									.where(
+										and(
+											eq(cashflowMonthly.projectId, proj.projectId),
+											gte(cashflowMonthly.yyyymm, startMonth),
+											lte(cashflowMonthly.yyyymm, targetMonth),
+										),
+									);
+
+								const cumulativeRecoup = cashflows.reduce(
+									(sum, cf) => sum + (cf.recoupAmount ?? 0),
+									0,
+								);
+
+								const rate = (cumulativeRecoup / proj.totalInvestment) * 100;
+								if (rate >= targetRate) {
+									recoupMonths.push(month);
+									break;
+								}
+							}
+						}
+					}
+
+					const averageRecoupMonths =
+						recoupMonths.length > 0
+							? recoupMonths.reduce((sum, m) => sum + m, 0) / recoupMonths.length
+							: null;
+
+					return {
+						cohort,
+						projectCount: cohortProjects.length,
+						totalInvestment,
+						totalRecouped,
+						averageRecoupRate,
+						averageRecoupMonths,
+					};
+				}),
+			);
+
+			// 정렬 (최신순)
+			return summary.sort((a, b) => b.cohort.localeCompare(a.cohort));
+		}),
+
+	/**
 	 * 기획사 ROI 비교
 	 * @param input 정렬 기준 (투자금액 큰 순 / 계약 만료일 임박 순)
 	 * @returns 선급투자를 받은 기획사들의 ROI 비교

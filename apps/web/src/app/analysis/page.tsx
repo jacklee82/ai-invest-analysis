@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactECharts from "echarts-for-react";
+import { CohortAnalysis } from "./cohort-analysis";
 
 /**
  * 심층 분석 페이지
@@ -87,9 +88,7 @@ export default function AnalysisPage() {
 				<TabsList>
 					<TabsTrigger value="roi">기획사 ROI</TabsTrigger>
 					<TabsTrigger value="chart">차트인 가치</TabsTrigger>
-					<TabsTrigger value="cohort" disabled>
-						코호트 분석 (준비중)
-					</TabsTrigger>
+					<TabsTrigger value="cohort">코호트 분석</TabsTrigger>
 				</TabsList>
 
 				{/* 기획사 ROI 분석 */}
@@ -327,6 +326,11 @@ export default function AnalysisPage() {
 				{/* 차트인 가치 분석 */}
 				<TabsContent value="chart" className="space-y-6">
 					<ChartValueAnalysis />
+				</TabsContent>
+
+				{/* 코호트 분석 */}
+				<TabsContent value="cohort" className="space-y-6">
+					<CohortAnalysis />
 				</TabsContent>
 			</Tabs>
 		</div>
