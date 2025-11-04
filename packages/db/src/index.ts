@@ -78,7 +78,8 @@ function getDatabaseUrl(): string {
  * @returns Drizzle ORM 인스턴스
  */
 const client = postgres(getDatabaseUrl(), {
-	max: 1, // 연결 풀 크기
+	max: 1, // 연결 풀 크기 (Supabase 무료 티어 제한: 2개 동시 연결)
+	// Supabase Connection Pooler를 사용하는 경우 자동으로 풀링 처리됨
 });
 
 export const db = drizzle(client, { schema });

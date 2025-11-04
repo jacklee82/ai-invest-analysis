@@ -115,3 +115,23 @@ my-better-t-app/
 - `bun run db:studio`: Open database studio UI
 - `cd packages/db && bun run db:push`: Push schema changes to PostgreSQL
 - `cd packages/db && bun run db:seed`: Generate seed data
+- `cd packages/db && bun run db:seed-large`: Generate large sample data
+- `cd packages/db && bun run db:seed-chart`: Generate chart entry sample data
+
+## Deployment
+
+### Supabase + Vercel 배포
+
+이 프로젝트는 Supabase (PostgreSQL)와 Vercel (Next.js)로 배포됩니다.
+
+#### 빠른 가이드
+1. **Supabase 마이그레이션**: `docs/Supabase_마이그레이션_가이드.md` 참고
+2. **Vercel 배포**: `docs/Vercel_배포_가이드.md` 참고
+3. **상세 계획**: `docs/Supabase_Vercel_배포_계획.md` 참고
+
+#### 환경변수 설정
+- **로컬**: `apps/web/.env.local`에 `DATABASE_URL` 설정
+- **Vercel**: 프로젝트 설정 → Environment Variables에서 설정
+  - `DATABASE_URL`: Supabase Connection Pooler URL (포트 6543)
+  - `FASTAPI_URL`: FastAPI 백엔드 URL (선택)
+  - `NODE_ENV`: production
