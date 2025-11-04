@@ -29,8 +29,38 @@ pip install -r requirements.txt
 
 ## 실행
 
+### Windows PowerShell
+
+```powershell
+# 방법 1: 스크립트 사용
+.\start.ps1
+
+# 방법 2: 직접 실행
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn main:app --reload --port 8000
+
+# 방법 3: 가상환경의 Python 직접 사용
+.\.venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000
+```
+
+### Windows CMD
+
+```cmd
+# 방법 1: 배치 파일 사용
+start.bat
+
+# 방법 2: 직접 실행
+.venv\Scripts\activate.bat
+python -m uvicorn main:app --reload --port 8000
+```
+
+### Linux/macOS
+
 ```bash
-# 개발 서버 실행
+# 가상환경 활성화
+source .venv/bin/activate
+
+# 서버 실행
 uvicorn main:app --reload --port 8000
 
 # 또는 Python으로 직접 실행
