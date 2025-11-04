@@ -78,6 +78,7 @@ export default function DashboardPage() {
 		trpc.dashboard.getMonthlyInvestment.queryOptions(),
 	);
 	const trends = useQuery(trpc.dashboard.getTrends.queryOptions());
+	const trendsData = Array.isArray(trends.data) ? trends.data : [];
 	const albumRevenueRanking = useQuery(
 		trpc.dashboard.getAlbumRevenueRanking.queryOptions(),
 	);
@@ -294,9 +295,9 @@ export default function DashboardPage() {
 				<ChartWrapper
 					title="월별 매출"
 					isLoading={trends.isLoading}
-					hasData={!!(trends.data && trends.data.length > 0)}
+					hasData={trendsData.length > 0}
 				>
-					{trends.data && trends.data.length > 0 && (
+					{trendsData.length > 0 && (
 						<ReactECharts
 							option={{
 								tooltip: {
@@ -308,7 +309,7 @@ export default function DashboardPage() {
 								},
 								xAxis: {
 									type: "category",
-									data: trends.data.map((t) => t.yyyymm),
+									data: trendsData.map((t) => t.yyyymm),
 									axisLabel: {
 										rotate: 45,
 									},
@@ -331,7 +332,7 @@ export default function DashboardPage() {
 									{
 										name: "매출액",
 										type: "bar",
-										data: trends.data.map((t) => t.revenue),
+										data: trendsData.map((t) => t.revenue),
 										itemStyle: { color: "#10b981" },
 									},
 								],
