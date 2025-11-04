@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "my-better-t-app",
-	description: "my-better-t-app",
+	title: "AI 기반 콘텐츠 투자 분석 시스템",
+	description: "콘텐츠 투자 분석 및 리스크 관리 시스템",
 };
 
 export default function RootLayout({

@@ -10,7 +10,7 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **shadcn/ui** - Reusable UI components
 - **tRPC** - End-to-end type-safe APIs
 - **Drizzle** - TypeScript-first ORM
-- **SQLite/Turso** - Database engine
+- **PostgreSQL** - Database engine
 - **Turborepo** - Optimized monorepo build system
 
 ## Getting Started
@@ -22,19 +22,37 @@ bun install
 ```
 ## Database Setup
 
-This project uses SQLite with Drizzle ORM.
+This project uses PostgreSQL with Drizzle ORM.
 
-1. Start the local SQLite database:
+1. **Install PostgreSQL** (if not already installed):
+   - Windows: Download from [PostgreSQL official site](https://www.postgresql.org/download/windows/)
+   - macOS: `brew install postgresql@15`
+   - Linux: `sudo apt-get install postgresql`
+
+2. **Create the database**:
 ```bash
-cd apps/web && bun run db:local
+createdb ai_invest
+# 또는 psql에서 실행:
+# CREATE DATABASE ai_invest;
 ```
 
-
-2. Update your `.env` file in the `apps/web` directory with the appropriate connection details if needed.
-
-3. Apply the schema to your database:
+3. **Set up environment variables**:
+   Create a `.env.local` file in `apps/web/` directory:
 ```bash
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_invest
+```
+   Replace `postgres:postgres` with your PostgreSQL username and password.
+
+4. **Apply the schema to your database**:
+```bash
+cd packages/db
 bun run db:push
+```
+
+5. **Generate seed data** (optional):
+```bash
+cd packages/db
+bun run db:seed
 ```
 
 
@@ -70,4 +88,5 @@ my-better-t-app/
 - `bun run check-types`: Check TypeScript types across all apps
 - `bun run db:push`: Push schema changes to database
 - `bun run db:studio`: Open database studio UI
-- `cd apps/web && bun run db:local`: Start the local SQLite database
+- `cd packages/db && bun run db:push`: Push schema changes to PostgreSQL
+- `cd packages/db && bun run db:seed`: Generate seed data
