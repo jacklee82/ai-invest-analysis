@@ -231,5 +231,115 @@ export const dashboardRouter = router({
 		console.log("[Dashboard] getTrends 반환값 개수:", result.length);
 		return result;
 	}),
+
+	/**
+	 * 투자→회수 워터폴 데이터 조회
+	 * @returns 투자금 → 회수금 → 이익 단계별 데이터
+	 */
+	getWaterfall: publicProcedure.query(async ({ ctx }) => {
+		const { db } = ctx;
+
+		if (!db) {
+			throw new Error("데이터베이스 연결이 없습니다.");
+		}
+
+		// 총 투자금 계산
+		const totalInvestmentResult = await db
+			.select({
+				total: sql<number>`COALESCE(sum(${project.initialInvestment} + ${project.additionalInvestment}), 0)`,
+			})
+			.from(project);
+		const totalInvestment = Number(totalInvestmentResult[0]?.total || 0);
+
+		// 총 회수금 계산
+		const totalRecoupedResult = await db
+			.select({
+				total: sql<number>`COALESCE(sum(${project.totalRecouped}), 0)`,
+			})
+			.from(project);
+		const totalRecouped = Number(totalRecoupedResult[0]?.total || 0);
+
+		// 이익 계산
+		const profit = totalRecouped - totalInvestment;
+
+		return {
+			totalInvestment: Number(totalInvestment),
+			totalRecouped: Number(totalRecouped),
+			profit: Number(profit),
+		};
+	}),
+
+	/**
+	 * Top 기획사 스캐터 데이터 조회
+	 * @returns 기획사별 투자금, 회수율, 매출, 사업타입
+	 */
+	getTopCompanies: publicProcedure.query(async ({ ctx }) => {
+		const { db } = ctx;
+
+		if (!db) {
+			throw new Error("데이터베이스 연결이 없습니다.");
+		}
+
+		// 기획사별 집계
+		const allProjects = await db.select().from(project);
+
+		// 기획사별로 그룹화
+		const companyMap = new Map<
+			string,
+			{
+				companyName: string;
+				totalInvestment: number;
+				totalRecouped: number;
+				totalRevenue: number;
+				businessTypes: Set<string>;
+			}
+		>();
+
+		for (const p of allProjects) {
+			const existing = companyMap.get(p.companyName);
+			const investment = p.initialInvestment + p.additionalInvestment;
+
+			if (existing) {
+				existing.totalInvestment += investment;
+				existing.totalRecouped += p.totalRecouped;
+				existing.businessTypes.add(p.businessType);
+			} else {
+				companyMap.set(p.companyName, {
+					companyName: p.companyName,
+					totalInvestment: investment,
+					totalRecouped: p.totalRecouped,
+					totalRevenue: 0,
+					businessTypes: new Set([p.businessType]),
+				});
+			}
+		}
+
+		// 기획사별 매출 계산
+		const allCashflows = await db.select().from(cashflowMonthly);
+		for (const cf of allCashflows) {
+			const project = allProjects.find((p) => p.projectId === cf.projectId);
+			if (project) {
+				const company = companyMap.get(project.companyName);
+				if (company) {
+					company.totalRevenue += Number(cf.revenueAmount);
+				}
+			}
+		}
+
+		// 회수율 계산 및 정렬
+		const companies = Array.from(companyMap.values())
+			.map((c) => ({
+				companyName: c.companyName,
+				totalInvestment: c.totalInvestment,
+				totalRecouped: c.totalRecouped,
+				recoupRate: c.totalInvestment > 0 ? (c.totalRecouped / c.totalInvestment) * 100 : 0,
+				totalRevenue: c.totalRevenue,
+				businessType: Array.from(c.businessTypes)[0], // 첫 번째 사업타입 사용
+			}))
+			.sort((a, b) => b.totalInvestment - a.totalInvestment) // 투자금 큰 순
+			.slice(0, 20); // Top 20
+
+		return companies;
+	}),
 });
 
