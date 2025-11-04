@@ -10,7 +10,7 @@ import { NextRequest } from "next/server";
 export async function GET(req: NextRequest) {
 	return fetchRequestHandler({
 		endpoint: "/api/trpc",
-		req,
+		req: req as unknown as Request,
 		router: appRouter,
 		createContext: () => createContext(req),
 		onError({ error, path }) {
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
 	return fetchRequestHandler({
 		endpoint: "/api/trpc",
-		req,
+		req: req as unknown as Request,
 		router: appRouter,
 		createContext: () => createContext(req),
 		onError({ error, path }) {
