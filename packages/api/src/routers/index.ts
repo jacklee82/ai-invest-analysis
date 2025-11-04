@@ -4,6 +4,7 @@ import { riskRouter } from "./risk";
 import { simulationRouter } from "./simulation";
 import { analysisRouter } from "./analysis";
 import { uploadRouter } from "./upload";
+import { projectRouter } from "./project";
 
 /**
  * 애플리케이션 루트 라우터
@@ -15,6 +16,7 @@ export const appRouter = router({
 	simulation: simulationRouter,
 	analysis: analysisRouter,
 	upload: uploadRouter,
+	project: projectRouter,
 });
 
 export type AppRouter = typeof appRouter;

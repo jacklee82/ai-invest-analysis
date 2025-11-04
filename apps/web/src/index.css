@@ -4,7 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Inter", "Geist", ui-sans-serif, system-ui, sans-serif,
+  --font-sans: var(--font-noto-sans-kr), "Noto Sans KR", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
@@ -130,5 +130,6 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-noto-sans-kr), "Noto Sans KR", ui-sans-serif, system-ui, sans-serif;
   }
 }

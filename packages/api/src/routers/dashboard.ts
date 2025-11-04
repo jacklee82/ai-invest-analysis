@@ -57,6 +57,32 @@ export const dashboardRouter = router({
 			totalInvestment > 0 ? (totalRecouped / totalInvestment) * 100 : 0;
 		console.log("[Dashboard] 회수율:", recoupRate);
 
+		// 누적 매출 계산 (cashflowMonthly의 revenueAmount 합계)
+		const totalRevenueResult = await db
+			.select({
+				total: sql<number>`COALESCE(sum(${cashflowMonthly.revenueAmount}), 0)`,
+			})
+			.from(cashflowMonthly);
+		const totalRevenue = totalRevenueResult[0]?.total
+			? Number(totalRevenueResult[0].total)
+			: 0;
+		console.log("[Dashboard] 누적 매출:", totalRevenue);
+
+		// 누적 원가 계산 (cashflowMonthly의 costAmount 합계)
+		const totalCostResult = await db
+			.select({
+				total: sql<number>`COALESCE(sum(${cashflowMonthly.costAmount}), 0)`,
+			})
+			.from(cashflowMonthly);
+		const totalCost = totalCostResult[0]?.total
+			? Number(totalCostResult[0].total)
+			: 0;
+		console.log("[Dashboard] 누적 원가:", totalCost);
+
+		// 누적 이익 계산 (매출 - 원가)
+		const totalProfit = totalRevenue - totalCost;
+		console.log("[Dashboard] 누적 이익:", totalProfit);
+
 		// 리스크 건수 계산 (경고 상태)
 		// 경고 조건: (경과 기간 > 총 계약 기간 / 2) && (회수율 < 0.5)
 		const allProjects = await db.select().from(project);
@@ -67,27 +93,33 @@ export const dashboardRouter = router({
 			const elapsedMonths = 
 				(now.getFullYear() - contractStart.getFullYear()) * 12 +
 				(now.getMonth() - contractStart.getMonth());
-			const totalInvestment = p.initialInvestment + p.additionalInvestment;
-			const recoupRate = totalInvestment > 0 
-				? p.totalRecouped / totalInvestment 
+			const projectTotalInvestment = p.initialInvestment + p.additionalInvestment;
+			const projectRecoupRate = projectTotalInvestment > 0 
+				? p.totalRecouped / projectTotalInvestment 
 				: 0;
 			const elapsedRatio = totalContractMonths > 0 
 				? elapsedMonths / totalContractMonths 
 				: 0;
-			return elapsedRatio > 0.5 && recoupRate < 0.5;
+			return elapsedRatio > 0.5 && projectRecoupRate < 0.5;
 		}).length;
 
 		// YoY 계산 (전년 동월 대비)
 		// TODO: 전년 데이터와 비교하여 증감률 계산
 		const yoy = {
 			totalInvestment: 0,
+			totalRecouped: 0,
 			recoupRate: 0,
+			totalRevenue: 0,
+			totalProfit: 0,
 			riskCount: 0,
 		};
 
 		const result = {
 			totalInvestment: Number(totalInvestment),
+			totalRecouped: Number(totalRecouped),
 			recoupRate: Math.round(recoupRate * 100) / 100,
+			totalRevenue: Number(totalRevenue),
+			totalProfit: Number(totalProfit),
 			riskCount: Number(riskCount),
 			yoy,
 		};
@@ -340,6 +372,207 @@ export const dashboardRouter = router({
 			.slice(0, 20); // Top 20
 
 		return companies;
+	}),
+
+	/**
+	 * 투자유형별 매출 (파이차트용)
+	 * @returns 사업 타입별 매출 비중
+	 */
+	getBusinessTypeRevenue: publicProcedure.query(async ({ ctx }) => {
+		const { db } = ctx;
+
+		if (!db) {
+			throw new Error("데이터베이스 연결이 없습니다.");
+		}
+
+		// 사업별 매출 집계 (getBusinessComparison과 유사하지만 매출만)
+		const allProjects = await db.select().from(project);
+		const allCashflows = await db.select().from(cashflowMonthly);
+
+		const businessRevenueMap = new Map<string, number>();
+
+		allCashflows.forEach((cf) => {
+			const proj = allProjects.find((p) => p.projectId === cf.projectId);
+			if (proj) {
+				const existing = businessRevenueMap.get(proj.businessType) || 0;
+				businessRevenueMap.set(proj.businessType, existing + Number(cf.revenueAmount));
+			}
+		});
+
+		const result = Array.from(businessRevenueMap.entries()).map(([businessType, revenue]) => ({
+			businessType,
+			revenue: Number(revenue),
+		}));
+
+		return result;
+	}),
+
+	/**
+	 * 월별 투자금
+	 * @returns 월별 투자금 집계 (계약 시작일 기준)
+	 */
+	getMonthlyInvestment: publicProcedure.query(async ({ ctx }) => {
+		const { db } = ctx;
+
+		if (!db) {
+			throw new Error("데이터베이스 연결이 없습니다.");
+		}
+
+		const allProjects = await db.select().from(project);
+
+		// 월별 투자금 집계
+		const monthlyInvestmentMap = new Map<string, number>();
+
+		allProjects.forEach((proj) => {
+			const contractStart = proj.contractStartDate;
+			const yyyymm = contractStart.substring(0, 7); // YYYY-MM 형식 추출
+			const investment = proj.initialInvestment + proj.additionalInvestment;
+
+			const existing = monthlyInvestmentMap.get(yyyymm) || 0;
+			monthlyInvestmentMap.set(yyyymm, existing + investment);
+		});
+
+		const result = Array.from(monthlyInvestmentMap.entries())
+			.map(([yyyymm, investment]) => ({
+				yyyymm,
+				investment: Number(investment),
+			}))
+			.sort((a, b) => a.yyyymm.localeCompare(b.yyyymm));
+
+		return result;
+	}),
+
+	/**
+	 * 음반 매출 순위
+	 * @returns 음반 사업 프로젝트별 매출 순위
+	 */
+	getAlbumRevenueRanking: publicProcedure.query(async ({ ctx }) => {
+		const { db } = ctx;
+
+		if (!db) {
+			throw new Error("데이터베이스 연결이 없습니다.");
+		}
+
+		// 음반 사업 프로젝트만 필터링
+		const albumProjects = await db
+			.select()
+			.from(project)
+			.where(sql`${project.businessType} = '음반'`);
+
+		// 프로젝트별 매출 집계
+		const allCashflows = await db.select().from(cashflowMonthly);
+		const projectRevenueMap = new Map<string, number>();
+
+		allCashflows.forEach((cf) => {
+			const proj = albumProjects.find((p) => p.projectId === cf.projectId);
+			if (proj) {
+				const existing = projectRevenueMap.get(cf.projectId) || 0;
+				projectRevenueMap.set(cf.projectId, existing + Number(cf.revenueAmount));
+			}
+		});
+
+		// 프로젝트명과 매출 매핑
+		const result = albumProjects
+			.map((proj) => ({
+				projectName: proj.projectName,
+				revenue: Number(projectRevenueMap.get(proj.projectId) || 0),
+			}))
+			.sort((a, b) => b.revenue - a.revenue)
+			.slice(0, 10); // Top 10
+
+		return result;
+	}),
+
+	/**
+	 * 기획사 매출 비중
+	 * @returns 기획사별 매출 및 비중 (트리맵/박스 플롯용)
+	 */
+	getCompanyRevenueShare: publicProcedure.query(async ({ ctx }) => {
+		const { db } = ctx;
+
+		if (!db) {
+			throw new Error("데이터베이스 연결이 없습니다.");
+		}
+
+		const allProjects = await db.select().from(project);
+		const allCashflows = await db.select().from(cashflowMonthly);
+
+		// 기획사별 매출 집계
+		const companyRevenueMap = new Map<string, number>();
+
+		allCashflows.forEach((cf) => {
+			const proj = allProjects.find((p) => p.projectId === cf.projectId);
+			if (proj) {
+				const existing = companyRevenueMap.get(proj.companyName) || 0;
+				companyRevenueMap.set(proj.companyName, existing + Number(cf.revenueAmount));
+			}
+		});
+
+		const totalRevenue = Array.from(companyRevenueMap.values()).reduce(
+			(sum, revenue) => sum + revenue,
+			0,
+		);
+
+		const result = Array.from(companyRevenueMap.entries())
+			.map(([companyName, revenue]) => ({
+				companyName,
+				revenue: Number(revenue),
+				share: totalRevenue > 0 ? (Number(revenue) / totalRevenue) * 100 : 0,
+			}))
+			.sort((a, b) => b.revenue - a.revenue)
+			.slice(0, 15); // Top 15
+
+		return result;
+	}),
+
+	/**
+	 * 리스크 순위
+	 * @returns 투자금액과 회수율을 고려한 리스크 점수 순위
+	 */
+	getRiskRanking: publicProcedure.query(async ({ ctx }) => {
+		const { db } = ctx;
+
+		if (!db) {
+			throw new Error("데이터베이스 연결이 없습니다.");
+		}
+
+		const allProjects = await db.select().from(project);
+		const now = new Date();
+
+		// 리스크 점수 계산
+		const riskProjects = allProjects.map((proj) => {
+			const totalContractMonths = proj.baseContractMonths + proj.extendedMonths;
+			const contractStart = new Date(proj.contractStartDate);
+			const elapsedMonths =
+				(now.getFullYear() - contractStart.getFullYear()) * 12 +
+				(now.getMonth() - contractStart.getMonth());
+			const totalInvestment = proj.initialInvestment + proj.additionalInvestment;
+			const recoupRate = totalInvestment > 0 ? proj.totalRecouped / totalInvestment : 0;
+			const elapsedRatio = totalContractMonths > 0 ? elapsedMonths / totalContractMonths : 0;
+
+			// 리스크 점수: 경과율이 높고 회수율이 낮을수록, 투자금이 클수록 높은 점수
+			// 공식: (경과율 * (1 - 회수율) * 투자금) / 100000000
+			const riskScore =
+				(elapsedRatio * (1 - recoupRate) * totalInvestment) / 100000000;
+
+			return {
+				projectId: proj.projectId,
+				projectName: proj.projectName,
+				companyName: proj.companyName,
+				totalInvestment,
+				recoupRate: recoupRate * 100,
+				elapsedRatio: elapsedRatio * 100,
+				riskScore: Number(riskScore.toFixed(2)),
+			};
+		});
+
+		// 리스크 점수 순으로 정렬 (높은 순)
+		const result = riskProjects
+			.filter((p) => p.riskScore > 0) // 리스크가 있는 것만
+			.sort((a, b) => b.riskScore - a.riskScore)
+			.slice(0, 10); // Top 10
+
+		return result;
 	}),
 });
 

@@ -12,6 +12,7 @@ const navLinks = [
 	{ to: "/simulation", label: "시뮬레이션" },
 	{ to: "/analysis", label: "분석" },
 	{ to: "/upload", label: "업로드" },
+	{ to: "/projects", label: "프로젝트 관리" },
 ] as const;
 
 /**
