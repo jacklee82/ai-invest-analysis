@@ -8,10 +8,20 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./*": {
-      "types": "./dist/*.d.ts",
-      "import": "./dist/*.js",
-      "default": "./dist/*.js"
+    "./context": {
+      "types": "./dist/context.d.ts",
+      "import": "./dist/context.js",
+      "default": "./dist/context.js"
+    },
+    "./routers/index": {
+      "types": "./dist/routers/index.d.ts",
+      "import": "./dist/routers/index.js",
+      "default": "./dist/routers/index.js"
+    },
+    "./routers/*": {
+      "types": "./dist/routers/*.d.ts",
+      "import": "./dist/routers/*.js",
+      "default": "./dist/routers/*.js"
     }
   },
   "type": "module",

@@ -24,5 +24,8 @@ export const router = t.router;
 
 export const publicProcedure = t.procedure;
 
-// RouterOutputs 타입 re-export
+// RouterOutputs 타입만 re-export (순환 참조 방지)
 export type { AppRouter, RouterOutputs } from "./routers/index";
+
+// Context 타입만 re-export
+export type { Context } from "./context";
