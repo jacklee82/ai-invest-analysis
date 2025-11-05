@@ -89,6 +89,9 @@ export default function DashboardPage() {
 		trpc.dashboard.getCompanyRevenueShare.queryOptions(),
 	);
 	const riskRanking = useQuery(trpc.dashboard.getRiskRanking.queryOptions());
+	const riskRankingData = Array.isArray(riskRanking.data)
+		? riskRanking.data
+		: [];
 
 
 	return (
@@ -478,9 +481,9 @@ export default function DashboardPage() {
 				<ChartWrapper
 					title="리스크 순위"
 					isLoading={riskRanking.isLoading}
-					hasData={!!(riskRanking.data && riskRanking.data.length > 0)}
+					hasData={riskRankingData.length > 0}
 				>
-					{riskRanking.data && riskRanking.data.length > 0 && (
+					{riskRankingData.length > 0 && (
 						<ReactECharts
 							option={{
 								tooltip: {
@@ -503,7 +506,7 @@ export default function DashboardPage() {
 								},
 								yAxis: {
 									type: "category",
-									data: riskRanking.data.map((item) => item.projectName),
+									data: riskRankingData.map((item) => item.projectName),
 									axisLabel: {
 										formatter: (value: string) => {
 											return value.length > 12 ? value.substring(0, 12) + "..." : value;
@@ -514,7 +517,7 @@ export default function DashboardPage() {
 									{
 										name: "리스크 점수",
 										type: "bar",
-										data: riskRanking.data.map((item) => ({
+										data: riskRankingData.map((item) => ({
 											value: item.riskScore,
 											name: item.projectName,
 											totalInvestment: item.totalInvestment,
@@ -525,7 +528,7 @@ export default function DashboardPage() {
 											color: (params: any) => {
 												// 점수가 높을수록 빨간색
 												const maxScore = Math.max(
-													...riskRanking.data.map((r) => r.riskScore),
+													...riskRankingData.map((r) => r.riskScore),
 												);
 												const ratio = params.value / maxScore;
 												if (ratio > 0.7) return "#ef4444";
