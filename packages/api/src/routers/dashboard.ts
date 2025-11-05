@@ -87,7 +87,7 @@ export const dashboardRouter = router({
 		// 경고 조건: (경과 기간 > 총 계약 기간 / 2) && (회수율 < 0.5)
 		const allProjects = await db.select().from(project);
 		const now = new Date();
-		const riskCount = allProjects.filter((p) => {
+		const riskCount = allProjects.filter((p: { baseContractMonths: number; extendedMonths: number; contractStartDate: string; initialInvestment: number; additionalInvestment: number; totalRecouped: number }) => {
 			const totalContractMonths = p.baseContractMonths + p.extendedMonths;
 			const contractStart = new Date(p.contractStartDate);
 			const elapsedMonths = 
@@ -163,7 +163,7 @@ export const dashboardRouter = router({
 
 		// 프로젝트별 매출/원가 매핑
 		const revenueMap = new Map(
-			monthlyRevenue.map((r) => [r.projectId, r]),
+			monthlyRevenue.map((r: { projectId: string; revenue: number; cost: number }) => [r.projectId, r]),
 		);
 
 		// 프로젝트별 매출/원가 정보 조회
@@ -172,7 +172,7 @@ export const dashboardRouter = router({
 		// 사업별 매출/원가 집계
 		const businessRevenueMap = new Map<string, { revenue: number; cost: number }>();
 
-		projects.forEach((proj) => {
+		projects.forEach((proj: { projectId: string; businessType: string }) => {
 			const monthly = revenueMap.get(proj.projectId);
 			if (!monthly) return;
 
@@ -181,13 +181,13 @@ export const dashboardRouter = router({
 				cost: 0,
 			};
 			businessRevenueMap.set(proj.businessType, {
-				revenue: existing.revenue + Number(monthly.revenue),
-				cost: existing.cost + Number(monthly.cost),
+				revenue: existing.revenue + Number((monthly as { revenue: number; cost: number }).revenue),
+				cost: existing.cost + Number((monthly as { revenue: number; cost: number }).cost),
 			});
 		});
 
 		// 결과 생성
-		const result = businessStats.map((stat) => {
+		const result = businessStats.map((stat: { businessType: string; totalInvestment: number; totalRecouped: number }) => {
 			const businessType = stat.businessType;
 			const revenue = Number(businessRevenueMap.get(businessType)?.revenue || 0);
 			const cost = Number(businessRevenueMap.get(businessType)?.cost || 0);
@@ -246,7 +246,7 @@ export const dashboardRouter = router({
 		
 		console.log("[Dashboard] 월별 추세 데이터 개수:", monthlyStats.length);
 
-		const result = monthlyStats.map((stat) => {
+		const result = monthlyStats.map((stat: { yyyymm: string; revenue: number; cost: number }) => {
 			const revenue = Number(stat.revenue) || 0;
 			const cost = Number(stat.cost) || 0;
 			const profit = revenue - cost;
@@ -349,7 +349,7 @@ export const dashboardRouter = router({
 		// 기획사별 매출 계산
 		const allCashflows = await db.select().from(cashflowMonthly);
 		for (const cf of allCashflows) {
-			const project = allProjects.find((p) => p.projectId === cf.projectId);
+			const project = allProjects.find((p: { projectId: string; companyName: string }) => p.projectId === cf.projectId);
 			if (project) {
 				const company = companyMap.get(project.companyName);
 				if (company) {
@@ -360,7 +360,7 @@ export const dashboardRouter = router({
 
 		// 회수율 계산 및 정렬
 		const companies = Array.from(companyMap.values())
-			.map((c) => ({
+			.map((c: { companyName: string; totalInvestment: number; totalRecouped: number; totalRevenue: number; businessTypes: Set<string> }) => ({
 				companyName: c.companyName,
 				totalInvestment: c.totalInvestment,
 				totalRecouped: c.totalRecouped,
@@ -368,7 +368,7 @@ export const dashboardRouter = router({
 				totalRevenue: c.totalRevenue,
 				businessType: Array.from(c.businessTypes)[0], // 첫 번째 사업타입 사용
 			}))
-			.sort((a, b) => b.totalInvestment - a.totalInvestment) // 투자금 큰 순
+			.sort((a: { totalInvestment: number }, b: { totalInvestment: number }) => b.totalInvestment - a.totalInvestment) // 투자금 큰 순
 			.slice(0, 20); // Top 20
 
 		return companies;
@@ -391,15 +391,15 @@ export const dashboardRouter = router({
 
 		const businessRevenueMap = new Map<string, number>();
 
-		allCashflows.forEach((cf) => {
-			const proj = allProjects.find((p) => p.projectId === cf.projectId);
+		allCashflows.forEach((cf: { projectId: string; revenueAmount: number | null }) => {
+			const proj = allProjects.find((p: { projectId: string; businessType: string }) => p.projectId === cf.projectId);
 			if (proj) {
 				const existing = businessRevenueMap.get(proj.businessType) || 0;
 				businessRevenueMap.set(proj.businessType, existing + Number(cf.revenueAmount));
 			}
 		});
 
-		const result = Array.from(businessRevenueMap.entries()).map(([businessType, revenue]) => ({
+		const result = Array.from(businessRevenueMap.entries()).map(([businessType, revenue]: [string, number]) => ({
 			businessType,
 			revenue: Number(revenue),
 		}));
@@ -423,7 +423,7 @@ export const dashboardRouter = router({
 		// 월별 투자금 집계
 		const monthlyInvestmentMap = new Map<string, number>();
 
-		allProjects.forEach((proj) => {
+		allProjects.forEach((proj: { contractStartDate: string; initialInvestment: number; additionalInvestment: number }) => {
 			const contractStart = proj.contractStartDate;
 			const yyyymm = contractStart.substring(0, 7); // YYYY-MM 형식 추출
 			const investment = proj.initialInvestment + proj.additionalInvestment;
@@ -433,11 +433,11 @@ export const dashboardRouter = router({
 		});
 
 		const result = Array.from(monthlyInvestmentMap.entries())
-			.map(([yyyymm, investment]) => ({
+			.map(([yyyymm, investment]: [string, number]) => ({
 				yyyymm,
 				investment: Number(investment),
 			}))
-			.sort((a, b) => a.yyyymm.localeCompare(b.yyyymm));
+			.sort((a: { yyyymm: string }, b: { yyyymm: string }) => a.yyyymm.localeCompare(b.yyyymm));
 
 		return result;
 	}),
@@ -463,8 +463,8 @@ export const dashboardRouter = router({
 		const allCashflows = await db.select().from(cashflowMonthly);
 		const projectRevenueMap = new Map<string, number>();
 
-		allCashflows.forEach((cf) => {
-			const proj = albumProjects.find((p) => p.projectId === cf.projectId);
+		allCashflows.forEach((cf: { projectId: string; revenueAmount: number | null }) => {
+			const proj = albumProjects.find((p: { projectId: string }) => p.projectId === cf.projectId);
 			if (proj) {
 				const existing = projectRevenueMap.get(cf.projectId) || 0;
 				projectRevenueMap.set(cf.projectId, existing + Number(cf.revenueAmount));
@@ -473,11 +473,11 @@ export const dashboardRouter = router({
 
 		// 프로젝트명과 매출 매핑
 		const result = albumProjects
-			.map((proj) => ({
+			.map((proj: { projectId: string; projectName: string }) => ({
 				projectName: proj.projectName,
 				revenue: Number(projectRevenueMap.get(proj.projectId) || 0),
 			}))
-			.sort((a, b) => b.revenue - a.revenue)
+			.sort((a: { revenue: number }, b: { revenue: number }) => b.revenue - a.revenue)
 			.slice(0, 10); // Top 10
 
 		return result;
@@ -500,8 +500,8 @@ export const dashboardRouter = router({
 		// 기획사별 매출 집계
 		const companyRevenueMap = new Map<string, number>();
 
-		allCashflows.forEach((cf) => {
-			const proj = allProjects.find((p) => p.projectId === cf.projectId);
+		allCashflows.forEach((cf: { projectId: string; revenueAmount: number | null }) => {
+			const proj = allProjects.find((p: { projectId: string; companyName: string }) => p.projectId === cf.projectId);
 			if (proj) {
 				const existing = companyRevenueMap.get(proj.companyName) || 0;
 				companyRevenueMap.set(proj.companyName, existing + Number(cf.revenueAmount));
@@ -509,17 +509,17 @@ export const dashboardRouter = router({
 		});
 
 		const totalRevenue = Array.from(companyRevenueMap.values()).reduce(
-			(sum, revenue) => sum + revenue,
+			(sum: number, revenue: number) => sum + revenue,
 			0,
 		);
 
 		const result = Array.from(companyRevenueMap.entries())
-			.map(([companyName, revenue]) => ({
+			.map(([companyName, revenue]: [string, number]) => ({
 				companyName,
 				revenue: Number(revenue),
 				share: totalRevenue > 0 ? (Number(revenue) / totalRevenue) * 100 : 0,
 			}))
-			.sort((a, b) => b.revenue - a.revenue)
+			.sort((a: { revenue: number }, b: { revenue: number }) => b.revenue - a.revenue)
 			.slice(0, 15); // Top 15
 
 		return result;
@@ -540,7 +540,7 @@ export const dashboardRouter = router({
 		const now = new Date();
 
 		// 리스크 점수 계산
-		const riskProjects = allProjects.map((proj) => {
+		const riskProjects = allProjects.map((proj: { baseContractMonths: number; extendedMonths: number; contractStartDate: string; initialInvestment: number; additionalInvestment: number; totalRecouped: number; projectId: string; projectName: string; companyName: string }) => {
 			const totalContractMonths = proj.baseContractMonths + proj.extendedMonths;
 			const contractStart = new Date(proj.contractStartDate);
 			const elapsedMonths =
@@ -568,8 +568,8 @@ export const dashboardRouter = router({
 
 		// 리스크 점수 순으로 정렬 (높은 순)
 		const result = riskProjects
-			.filter((p) => p.riskScore > 0) // 리스크가 있는 것만
-			.sort((a, b) => b.riskScore - a.riskScore)
+			.filter((p: { riskScore: number }) => p.riskScore > 0) // 리스크가 있는 것만
+			.sort((a: { riskScore: number }, b: { riskScore: number }) => b.riskScore - a.riskScore)
 			.slice(0, 10); // Top 10
 
 		return result;

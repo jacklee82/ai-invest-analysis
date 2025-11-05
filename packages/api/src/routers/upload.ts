@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../index";
-import { uploadJob, UploadStatus } from "@my-better-t-app/db";
-import { eq, desc } from "drizzle-orm";
+import { uploadJob, UploadStatus, eq, desc } from "@my-better-t-app/db";
 
 /**
  * 업로드 라우터
@@ -81,7 +80,7 @@ export const uploadRouter = router({
 			const paginatedJobs = allJobs.slice(startIndex, endIndex);
 
 			return {
-				items: paginatedJobs.map((job) => ({
+				items: paginatedJobs.map((job: { jobId: string; fileName: string; source: string; status: string; rowsParsed: number; rowsLoaded: number; startedAt: Date; endedAt: Date | null; errorMessage: string | null }) => ({
 					jobId: job.jobId,
 					fileName: job.fileName,
 					source: job.source as "A" | "B",

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../index";
-import { project, cashflowMonthly } from "@my-better-t-app/db";
-import { sql, and, gte, desc, eq } from "drizzle-orm";
+import { project, cashflowMonthly, eq, and, gte, lte, sql } from "@my-better-t-app/db";
+import { desc } from "drizzle-orm";
 
 /**
  * 리스크 관리 라우터
@@ -34,7 +34,7 @@ export const riskRouter = router({
 
 			// 경고 상태 계산 및 필터링
 			const warningProjects = allProjects
-				.map((p) => {
+				.map((p: { baseContractMonths: number; extendedMonths: number; contractStartDate: string; initialInvestment: number; additionalInvestment: number; totalRecouped: number; projectId: string; projectName: string; companyName: string }) => {
 					// 총 계약 기간 계산
 					const totalContractMonths = p.baseContractMonths + p.extendedMonths;
 					
@@ -72,8 +72,8 @@ export const riskRouter = router({
 						isWarning,
 					};
 				})
-				.filter((p) => p.isWarning)
-				.sort((a, b) => {
+				.filter((p: { isWarning: boolean }) => p.isWarning)
+				.sort((a: { elapsedPeriod: number; contractPeriod: number; recoupRate: number }, b: { elapsedPeriod: number; contractPeriod: number; recoupRate: number }) => {
 					// 우선순위: 경과 비율 높은 순, 회수율 낮은 순
 					const aElapsedRatio = a.elapsedPeriod / a.contractPeriod;
 					const bElapsedRatio = b.elapsedPeriod / b.contractPeriod;
@@ -157,7 +157,7 @@ export const riskRouter = router({
 				extendedPeriod: p.extendedMonths,
 				totalContractPeriod: p.baseContractMonths + p.extendedMonths,
 				contractStartDate: p.contractStartDate,
-				recentMonths: recentCashflows.map((cf) => ({
+				recentMonths: recentCashflows.map((cf: { yyyymm: string; recoupAmount: number | null }) => ({
 					yyyymm: cf.yyyymm,
 					recoupAmount: Number(cf.recoupAmount),
 				})),

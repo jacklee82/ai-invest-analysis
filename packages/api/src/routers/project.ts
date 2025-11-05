@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../index";
-import { project, cashflowMonthly, BusinessType } from "@my-better-t-app/db";
-import { eq, desc } from "drizzle-orm";
+import { project, cashflowMonthly, BusinessType, eq } from "@my-better-t-app/db";
+import { desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -36,17 +36,17 @@ export const projectRouter = router({
 			// 필터 적용
 			if (input.businessType) {
 				allProjects = allProjects.filter(
-					(p) => p.businessType === input.businessType,
+					(p: { businessType: string }) => p.businessType === input.businessType,
 				);
 			}
 			if (input.companyName) {
 				allProjects = allProjects.filter(
-					(p) => p.companyName.includes(input.companyName!),
+					(p: { companyName: string }) => p.companyName.includes(input.companyName!),
 				);
 			}
 
 			// 정렬 (최신순)
-			allProjects.sort((a, b) => {
+			allProjects.sort((a: { contractStartDate: string }, b: { contractStartDate: string }) => {
 				const dateA = new Date(a.contractStartDate);
 				const dateB = new Date(b.contractStartDate);
 				return dateB.getTime() - dateA.getTime();
@@ -420,4 +420,6 @@ export const projectRouter = router({
 			return { success: true };
 		}),
 });
+
+
 

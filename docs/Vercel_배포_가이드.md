@@ -138,3 +138,5 @@ Vercel 프로젝트 → Settings → Domains:
 
 **참고**: FastAPI 백엔드는 별도로 배포 필요 (Railway, Render, Fly.io 등)
 
+
+

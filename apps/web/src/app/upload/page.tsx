@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Upload, File, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
+import type { RouterOutputs } from "@my-better-t-app/api";
 
 /**
  * 업로드 페이지
@@ -304,7 +305,7 @@ export default function UploadPage() {
 											</TableCell>
 										</TableRow>
 									) : (
-										historyQuery.data?.items.map((item) => (
+										historyQuery.data?.items.map((item: RouterOutputs["upload"]["getUploadHistory"]["items"][number]) => (
 											<TableRow key={item.jobId}>
 												<TableCell className="font-medium">
 													{item.fileName}

@@ -23,3 +23,6 @@ export const t = initTRPC.context<Context>().create({
 export const router = t.router;
 
 export const publicProcedure = t.procedure;
+
+// RouterOutputs 타입 re-export
+export type { AppRouter, RouterOutputs } from "./routers/index";

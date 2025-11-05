@@ -61,3 +61,5 @@ git remote -v
 
 **참고**: GitHub MCP 인증이 설정되어 있다면 MCP를 통해 저장소를 생성할 수 있습니다.
 
+
+

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../index";
-import { project, cashflowMonthly, chartEntry } from "@my-better-t-app/db";
-import { sql, desc, eq, and, gte, lte } from "drizzle-orm";
+import { project, cashflowMonthly, chartEntry, eq, and, gte, lte } from "@my-better-t-app/db";
+import { sql, desc } from "drizzle-orm";
 
 /**
  * 심층 분석 라우터
@@ -50,7 +50,7 @@ export const analysisRouter = router({
 
 		// 2. 각 프로젝트의 차트인 수익 및 주 수 계산
 		const chartData = await Promise.all(
-			chartedProjects.map(async ({ projectId }) => {
+			chartedProjects.map(async ({ projectId }: { projectId: string }) => {
 				// 차트인 주 수 계산
 				const chartWeeks = await db
 					.select({
@@ -95,7 +95,7 @@ export const analysisRouter = router({
 						);
 
 					chartRevenue = cashflows.reduce(
-						(sum, cf) => sum + (cf.revenue ?? 0),
+						(sum: number, cf: { revenue: number | null }) => sum + (cf.revenue ?? 0),
 						0,
 					);
 				}
@@ -110,11 +110,11 @@ export const analysisRouter = router({
 
 		// 3. 단순 평균 계산
 		const totalChartedWeeks = chartData.reduce(
-			(sum, d) => sum + d.chartedWeeks,
+			(sum: number, d: { chartedWeeks: number; chartRevenue: number }) => sum + d.chartedWeeks,
 			0,
 		);
 		const totalChartRevenue = chartData.reduce(
-			(sum, d) => sum + d.chartRevenue,
+			(sum: number, d: { chartedWeeks: number; chartRevenue: number }) => sum + d.chartRevenue,
 			0,
 		);
 		const averageValuePerWeek =
@@ -148,13 +148,13 @@ export const analysisRouter = router({
 		if (regressionData.length > 1) {
 			// 단순 선형 회귀 (y = ax + b)
 			const n = regressionData.length;
-			const sumX = regressionData.reduce((sum, d) => sum + d.x, 0);
-			const sumY = regressionData.reduce((sum, d) => sum + d.y, 0);
+			const sumX = regressionData.reduce((sum: number, d: { x: number; y: number }) => sum + d.x, 0);
+			const sumY = regressionData.reduce((sum: number, d: { x: number; y: number }) => sum + d.y, 0);
 			const sumXY = regressionData.reduce(
-				(sum, d) => sum + d.x * d.y,
+				(sum: number, d: { x: number; y: number }) => sum + d.x * d.y,
 				0,
 			);
-			const sumX2 = regressionData.reduce((sum, d) => sum + d.x * d.x, 0);
+			const sumX2 = regressionData.reduce((sum: number, d: { x: number; y: number }) => sum + d.x * d.x, 0);
 
 			const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
 			const intercept = (sumY - slope * sumX) / n;
@@ -162,11 +162,11 @@ export const analysisRouter = router({
 			// R² 계산
 			const yMean = sumY / n;
 			const ssRes = regressionData.reduce(
-				(sum, d) => sum + Math.pow(d.y - (slope * d.x + intercept), 2),
+				(sum: number, d: { x: number; y: number }) => sum + Math.pow(d.y - (slope * d.x + intercept), 2),
 				0,
 			);
 			const ssTot = regressionData.reduce(
-				(sum, d) => sum + Math.pow(d.y - yMean, 2),
+				(sum: number, d: { x: number; y: number }) => sum + Math.pow(d.y - yMean, 2),
 				0,
 			);
 			const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
@@ -229,7 +229,7 @@ export const analysisRouter = router({
 
 			// 2. 각 프로젝트의 차트인 수익 및 주 수 계산
 			const trackData = await Promise.all(
-				chartedProjects.map(async ({ projectId }) => {
+				chartedProjects.map(async ({ projectId }: { projectId: string }) => {
 					// 프로젝트 정보 조회
 					const projectInfo = await db
 						.select({
@@ -291,7 +291,7 @@ export const analysisRouter = router({
 							);
 
 						chartRevenue = cashflows.reduce(
-							(sum, cf) => sum + (cf.revenue ?? 0),
+							(sum: number, cf: { revenue: number | null }) => sum + (cf.revenue ?? 0),
 							0,
 						);
 					}
@@ -448,7 +448,7 @@ export const analysisRouter = router({
 							);
 
 						const cumulativeRecoup = cashflows.reduce(
-							(sum, cf) => sum + (cf.recoupAmount ?? 0),
+							(sum: number, cf: { recoupAmount: number | null }) => sum + (cf.recoupAmount ?? 0),
 							0,
 						);
 
@@ -465,7 +465,7 @@ export const analysisRouter = router({
 					// 평균 회수율 계산
 					const averageRate =
 						rates.length > 0
-							? rates.reduce((sum, r) => sum + r, 0) / rates.length
+							? rates.reduce((sum: number, r: number) => sum + r, 0) / rates.length
 							: 0;
 
 					heatmapData.push({
@@ -595,7 +595,7 @@ export const analysisRouter = router({
 								);
 
 							const cumulativeRecoup = cashflows.reduce(
-								(sum, cf) => sum + (cf.recoupAmount ?? 0),
+								(sum: number, cf: { recoupAmount: number | null }) => sum + (cf.recoupAmount ?? 0),
 								0,
 							);
 
@@ -609,7 +609,7 @@ export const analysisRouter = router({
 
 						data.push(
 							rates.length > 0
-								? rates.reduce((sum, r) => sum + r, 0) / rates.length
+								? rates.reduce((sum: number, r: number) => sum + r, 0) / rates.length
 								: 0,
 						);
 					}
@@ -693,11 +693,11 @@ export const analysisRouter = router({
 			const summary = await Promise.all(
 				Array.from(cohortMap.entries()).map(async ([cohort, cohortProjects]) => {
 					const totalInvestment = cohortProjects.reduce(
-						(sum, p) => sum + p.totalInvestment,
+						(sum: number, p: { totalInvestment: number; totalRecouped: number }) => sum + p.totalInvestment,
 						0,
 					);
 					const totalRecouped = cohortProjects.reduce(
-						(sum, p) => sum + p.totalRecouped,
+						(sum: number, p: { totalInvestment: number; totalRecouped: number }) => sum + p.totalRecouped,
 						0,
 					);
 					const averageRecoupRate =
@@ -710,7 +710,7 @@ export const analysisRouter = router({
 					for (const proj of cohortProjects) {
 						if (proj.totalInvestment > 0) {
 							const targetRate = 100;
-							const startMonth = proj.contractStartDate.substring(0, 7);
+							const startMonthStr: string = proj.contractStartDate.substring(0, 7);
 
 							// 월별 회수율을 계산하여 100% 달성 시점 찾기
 							for (let month = 0; month <= 24; month++) {
@@ -732,13 +732,13 @@ export const analysisRouter = router({
 									.where(
 										and(
 											eq(cashflowMonthly.projectId, proj.projectId),
-											gte(cashflowMonthly.yyyymm, startMonth),
+											gte(cashflowMonthly.yyyymm, startMonthStr),
 											lte(cashflowMonthly.yyyymm, targetMonth),
 										),
 									);
 
 								const cumulativeRecoup = cashflows.reduce(
-									(sum, cf) => sum + (cf.recoupAmount ?? 0),
+									(sum: number, cf: { recoupAmount: number | null }) => sum + (cf.recoupAmount ?? 0),
 									0,
 								);
 
@@ -753,7 +753,7 @@ export const analysisRouter = router({
 
 					const averageRecoupMonths =
 						recoupMonths.length > 0
-							? recoupMonths.reduce((sum, m) => sum + m, 0) / recoupMonths.length
+							? recoupMonths.reduce((sum: number, m: number) => sum + m, 0) / recoupMonths.length
 							: null;
 
 					return {

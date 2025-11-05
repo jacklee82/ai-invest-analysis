@@ -64,3 +64,5 @@ GitHub 푸시 완료 후:
 1. **Supabase 마이그레이션**: `docs/Supabase_마이그레이션_가이드.md` 참고
 2. **Vercel 배포**: `docs/Vercel_배포_가이드.md` 참고
 
+
+

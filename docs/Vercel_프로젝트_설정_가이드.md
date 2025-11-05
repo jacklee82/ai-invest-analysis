@@ -74,3 +74,5 @@ my-better-t-app/
    - `DATABASE_URL` (Supabase Connection Pooler URL)
    - `FASTAPI_URL` (선택, 나중에 FastAPI 배포 후 설정)
 
+
+

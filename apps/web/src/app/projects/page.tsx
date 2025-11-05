@@ -33,6 +33,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, DollarSign } from "lucide-react";
 import { toast } from "sonner";
+import type { RouterOutputs } from "@my-better-t-app/api";
+
+type Project = RouterOutputs["project"]["list"]["items"][number];
 
 /**
  * 프로젝트 관리 페이지
@@ -201,7 +204,7 @@ export default function ProjectsPage() {
 											</TableCell>
 										</TableRow>
 									) : (
-										projectsData.map((proj) => {
+										projectsData.map((proj: Project) => {
 											const totalInvestment =
 												proj.initialInvestment +
 												proj.additionalInvestment +
@@ -627,7 +630,13 @@ function EditProjectDialog({
 	const projectQuery = useQuery({
 		...trpc.project.getById.queryOptions({ projectId }),
 		enabled: open,
-	});
+	}) as {
+		data: RouterOutputs["project"]["getById"] | undefined;
+		isLoading: boolean;
+		isError: boolean;
+		error: { message: string } | null;
+		refetch: () => void;
+	};
 
 	const [formData, setFormData] = useState<{
 		projectName: string;
@@ -908,7 +917,13 @@ function CashflowDialog({
 	const cashflowsQuery = useQuery({
 		...trpc.project.getCashflows.queryOptions({ projectId }),
 		enabled: open,
-	});
+	}) as {
+		data: RouterOutputs["project"]["getCashflows"] | undefined;
+		isLoading: boolean;
+		isError: boolean;
+		error: { message: string } | null;
+		refetch: () => void;
+	};
 
 	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 	const [editingCashflowId, setEditingCashflowId] = useState<string | null>(null);
@@ -944,7 +959,7 @@ function CashflowDialog({
 					<Skeleton className="h-64 w-full" />
 				) : cashflowsQuery.isError ? (
 					<div className="text-center text-red-600">
-						에러: {cashflowsQuery.error.message}
+						에러: {cashflowsQuery.error?.message || "알 수 없는 오류"}
 					</div>
 				) : (
 					<Table>
@@ -965,7 +980,7 @@ function CashflowDialog({
 									</TableCell>
 								</TableRow>
 							) : (
-								cashflowsQuery.data?.map((cf) => (
+								cashflowsQuery.data?.map((cf: RouterOutputs["project"]["getCashflows"][number]) => (
 									<TableRow key={cf.id}>
 										<TableCell>{cf.yyyymm}</TableCell>
 										<TableCell>
@@ -1022,7 +1037,7 @@ function CashflowDialog({
 							if (!open) setEditingCashflowId(null);
 						}}
 						cashflowId={editingCashflowId}
-						cashflow={cashflowsQuery.data.find((cf) => cf.id === editingCashflowId) || null}
+						cashflow={cashflowsQuery.data.find((cf: RouterOutputs["project"]["getCashflows"][number]) => cf.id === editingCashflowId) || null}
 						onSuccess={() => {
 							cashflowsQuery.refetch();
 							onSuccess();

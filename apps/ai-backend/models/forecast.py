@@ -190,3 +190,5 @@ class ForecastModel:
 			"mape": float(mape),
 		}
 
+
+

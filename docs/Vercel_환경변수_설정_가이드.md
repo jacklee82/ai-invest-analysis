@@ -128,3 +128,5 @@ FASTAPI_URL=https://[FASTAPI_BACKEND_URL]  (선택)
 - ✅ **DATABASE_URL**: 필수 (이미 설정 완료)
 - ⚠️ **FASTAPI_URL**: 선택 (FastAPI 백엔드 배포 후 설정)
 
+
+

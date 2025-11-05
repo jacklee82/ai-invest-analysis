@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import ReactECharts from "echarts-for-react";
+import type { RouterOutputs } from "@my-better-t-app/api";
 
 /**
  * 리스크 관리 페이지
@@ -90,7 +91,7 @@ export default function RiskPage() {
 										</tr>
 									</thead>
 									<tbody>
-										{warningsQuery.data?.items.map((item) => (
+										{warningsQuery.data?.items.map((item: RouterOutputs["risk"]["listWarnings"]["items"][number]) => (
 											<tr
 												key={item.projectId}
 												className="border-b hover:bg-accent/50 cursor-pointer"
@@ -264,7 +265,7 @@ export default function RiskPage() {
 													},
 													xAxis: {
 														type: "category",
-														data: detailQuery.data.recentMonths.map((m) => m.yyyymm),
+														data: detailQuery.data.recentMonths.map((m: RouterOutputs["risk"]["getRiskDetail"]["recentMonths"][number]) => m.yyyymm),
 													},
 													yAxis: {
 														type: "value",
@@ -284,7 +285,7 @@ export default function RiskPage() {
 														{
 															type: "line",
 															data: detailQuery.data.recentMonths.map(
-																(m) => m.recoupAmount,
+																(m: RouterOutputs["risk"]["getRiskDetail"]["recentMonths"][number]) => m.recoupAmount,
 															),
 															smooth: true,
 															itemStyle: { color: "#ef4444" },

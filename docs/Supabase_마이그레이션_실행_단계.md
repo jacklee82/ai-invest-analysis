@@ -153,3 +153,5 @@ Supabase 마이그레이션 완료 후:
 - Supabase Dashboard → Table Editor에서 데이터 확인
 - 브라우저 콘솔에서 에러 확인
 
+
+

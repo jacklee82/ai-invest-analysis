@@ -26,6 +26,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@my-better-t-app/db": [
+        "../../packages/db/src/index.ts"
+      ],
+      "@my-better-t-app/api": [
+        "../../packages/api/src/index.ts"
       ]
     }
   },
@@ -35,7 +41,9 @@
     "./**/*.tsx",
     "./.next/types/**/*.ts",
     ".next\\dev/types/**/*.ts",
-    ".next\\dev/types/**/*.ts"
+    ".next\\dev/types/**/*.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "./node_modules"

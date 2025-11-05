@@ -7,3 +7,5 @@ Write-Host "Starting FastAPI server..." -ForegroundColor Green
 # uvicorn 실행
 python -m uvicorn main:app --reload --port 8000
 
+
+

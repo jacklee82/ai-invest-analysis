@@ -61,3 +61,5 @@ Vercel Dashboard → Settings → General → Root Directory:
 - 빌드 캐시 활용
 - 필요 시 Vercel Pro 플랜 고려
 
+
+
