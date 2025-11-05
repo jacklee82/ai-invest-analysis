@@ -74,9 +74,15 @@ export default function DashboardPage() {
 	const businessTypeRevenue = useQuery(
 		trpc.dashboard.getBusinessTypeRevenue.queryOptions(),
 	);
+	const businessTypeRevenueData = Array.isArray(businessTypeRevenue.data)
+		? businessTypeRevenue.data
+		: [];
 	const monthlyInvestment = useQuery(
 		trpc.dashboard.getMonthlyInvestment.queryOptions(),
 	);
+	const monthlyInvestmentData = Array.isArray(monthlyInvestment.data)
+		? monthlyInvestment.data
+		: [];
 	const trends = useQuery(trpc.dashboard.getTrends.queryOptions());
 	const trendsData = Array.isArray(trends.data) ? trends.data : [];
 	const albumRevenueRanking = useQuery(
@@ -88,6 +94,9 @@ export default function DashboardPage() {
 	const companyRevenueShare = useQuery(
 		trpc.dashboard.getCompanyRevenueShare.queryOptions(),
 	);
+	const companyRevenueShareData = Array.isArray(companyRevenueShare.data)
+		? companyRevenueShare.data
+		: [];
 	const riskRanking = useQuery(trpc.dashboard.getRiskRanking.queryOptions());
 	const riskRankingData = Array.isArray(riskRanking.data)
 		? riskRanking.data
@@ -172,9 +181,9 @@ export default function DashboardPage() {
 				<ChartWrapper
 					title="투자유형별 매출"
 					isLoading={businessTypeRevenue.isLoading}
-					hasData={!!(businessTypeRevenue.data && businessTypeRevenue.data.length > 0)}
+					hasData={businessTypeRevenueData.length > 0}
 				>
-					{businessTypeRevenue.data && businessTypeRevenue.data.length > 0 && (
+					{businessTypeRevenueData.length > 0 && (
 						<ReactECharts
 							option={{
 								tooltip: {
@@ -211,7 +220,7 @@ export default function DashboardPage() {
 												fontWeight: "bold",
 											},
 										},
-										data: businessTypeRevenue.data.map((item) => ({
+										data: businessTypeRevenueData.map((item) => ({
 											value: item.revenue,
 											name: item.businessType,
 										})),
@@ -228,9 +237,9 @@ export default function DashboardPage() {
 				<ChartWrapper
 					title="월별 투자금"
 					isLoading={monthlyInvestment.isLoading}
-					hasData={!!(monthlyInvestment.data && monthlyInvestment.data.length > 0)}
+					hasData={monthlyInvestmentData.length > 0}
 				>
-					{monthlyInvestment.data && monthlyInvestment.data.length > 0 && (
+					{monthlyInvestmentData.length > 0 && (
 						<ReactECharts
 							option={{
 								tooltip: {
@@ -242,7 +251,7 @@ export default function DashboardPage() {
 								},
 								xAxis: {
 									type: "category",
-									data: monthlyInvestment.data.map((item) => item.yyyymm),
+									data: monthlyInvestmentData.map((item) => item.yyyymm),
 									axisLabel: {
 										rotate: 45,
 									},
@@ -265,7 +274,7 @@ export default function DashboardPage() {
 									{
 										name: "투자금",
 										type: "line",
-										data: monthlyInvestment.data.map((item) => item.investment),
+										data: monthlyInvestmentData.map((item) => item.investment),
 										itemStyle: { color: "#3b82f6" },
 										smooth: true,
 										areaStyle: {
@@ -429,9 +438,9 @@ export default function DashboardPage() {
 				<ChartWrapper
 					title="기획사 매출 비중"
 					isLoading={companyRevenueShare.isLoading}
-					hasData={!!(companyRevenueShare.data && companyRevenueShare.data.length > 0)}
+					hasData={companyRevenueShareData.length > 0}
 				>
-					{companyRevenueShare.data && companyRevenueShare.data.length > 0 && (
+					{companyRevenueShareData.length > 0 && (
 						<ReactECharts
 							option={{
 								tooltip: {
@@ -444,7 +453,7 @@ export default function DashboardPage() {
 									{
 										name: "기획사 매출",
 										type: "treemap",
-										data: companyRevenueShare.data.map((item) => ({
+										data: companyRevenueShareData.map((item) => ({
 											value: item.revenue,
 											name: item.companyName,
 										})),
