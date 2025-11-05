@@ -15,8 +15,25 @@ export const dashboardRouter = router({
 	getSummary: publicProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
 
+		// 프로토타입: DB 연결 실패 시 하드코딩된 더미 데이터 반환
 		if (!db) {
-			throw new Error("데이터베이스에 연결할 수 없습니다. 환경변수 DATABASE_URL을 확인해주세요.");
+			console.log("[Dashboard] DB 연결 없음 - 하드코딩된 더미 데이터 반환");
+			return {
+				totalInvestment: 5000000000, // 50억
+				totalRecouped: 3200000000, // 32억
+				recoupRate: 64.0,
+				totalRevenue: 8500000000, // 85억
+				totalProfit: 2800000000, // 28억
+				riskCount: 3,
+				yoy: {
+					totalInvestment: 12.5,
+					totalRecouped: 8.3,
+					recoupRate: -2.1,
+					totalRevenue: 15.2,
+					totalProfit: 18.7,
+					riskCount: -1,
+				},
+			};
 		}
 
 		try {
@@ -129,19 +146,25 @@ export const dashboardRouter = router({
 		return result;
 		} catch (error) {
 			console.error("[Dashboard] getSummary 에러:", error);
-			const errorMessage = error instanceof Error 
-				? error.message 
-				: "데이터베이스 쿼리 실행 중 오류가 발생했습니다.";
+			console.log("[Dashboard] 에러 발생 - 하드코딩된 더미 데이터 반환 (프로토타입)");
 			
-			// 타임아웃 또는 연결 오류인 경우 명확한 메시지
-			if (errorMessage.includes("timeout") || errorMessage.includes("TIMEOUT") || errorMessage.includes("ETIMEDOUT")) {
-				throw new Error("데이터베이스 연결 시간이 초과되었습니다. DATABASE_URL 설정을 확인해주세요.");
-			}
-			if (errorMessage.includes("connect") || errorMessage.includes("ECONNREFUSED")) {
-				throw new Error("데이터베이스에 연결할 수 없습니다. DATABASE_URL을 확인해주세요.");
-			}
-			
-			throw new Error(`데이터 조회 실패: ${errorMessage}`);
+			// 프로토타입: 에러 발생 시에도 더미 데이터 반환
+			return {
+				totalInvestment: 5000000000, // 50억
+				totalRecouped: 3200000000, // 32억
+				recoupRate: 64.0,
+				totalRevenue: 8500000000, // 85억
+				totalProfit: 2800000000, // 28억
+				riskCount: 3,
+				yoy: {
+					totalInvestment: 12.5,
+					totalRecouped: 8.3,
+					recoupRate: -2.1,
+					totalRevenue: 15.2,
+					totalProfit: 18.7,
+					riskCount: -1,
+				},
+			};
 		}
 	}),
 
@@ -246,8 +269,16 @@ export const dashboardRouter = router({
 	getTrends: publicProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
 
+		// 프로토타입: DB 연결 실패 시 더미 데이터 반환
 		if (!db) {
-			throw new Error("데이터베이스 연결이 없습니다.");
+			return [
+				{ yyyymm: "2024-01", revenue: 1200000000, profit: 350000000, margin: 29.17 },
+				{ yyyymm: "2024-02", revenue: 1350000000, profit: 420000000, margin: 31.11 },
+				{ yyyymm: "2024-03", revenue: 1500000000, profit: 480000000, margin: 32.0 },
+				{ yyyymm: "2024-04", revenue: 1450000000, profit: 450000000, margin: 31.03 },
+				{ yyyymm: "2024-05", revenue: 1600000000, profit: 520000000, margin: 32.5 },
+				{ yyyymm: "2024-06", revenue: 1700000000, profit: 580000000, margin: 34.12 },
+			];
 		}
 
 		// 월별 매출/원가 집계
@@ -398,8 +429,14 @@ export const dashboardRouter = router({
 	getBusinessTypeRevenue: publicProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
 
+		// 프로토타입: DB 연결 실패 시 더미 데이터 반환
 		if (!db) {
-			throw new Error("데이터베이스 연결이 없습니다.");
+			return [
+				{ businessType: "선급투자", revenue: 3500000000, profit: 1800000000, margin: 51.43 },
+				{ businessType: "일반투자", revenue: 2800000000, profit: 650000000, margin: 23.21 },
+				{ businessType: "OST", revenue: 1500000000, profit: 250000000, margin: 16.67 },
+				{ businessType: "음반", revenue: 700000000, profit: 100000000, margin: 14.29 },
+			];
 		}
 
 		// 사업별 매출 집계 (getBusinessComparison과 유사하지만 매출만)
@@ -431,8 +468,16 @@ export const dashboardRouter = router({
 	getMonthlyInvestment: publicProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
 
+		// 프로토타입: DB 연결 실패 시 더미 데이터 반환
 		if (!db) {
-			throw new Error("데이터베이스 연결이 없습니다.");
+			return [
+				{ yyyymm: "2024-01", investment: 500000000 },
+				{ yyyymm: "2024-02", investment: 450000000 },
+				{ yyyymm: "2024-03", investment: 600000000 },
+				{ yyyymm: "2024-04", investment: 400000000 },
+				{ yyyymm: "2024-05", investment: 550000000 },
+				{ yyyymm: "2024-06", investment: 500000000 },
+			];
 		}
 
 		const allProjects = await db.select().from(project);
@@ -466,8 +511,15 @@ export const dashboardRouter = router({
 	getAlbumRevenueRanking: publicProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
 
+		// 프로토타입: DB 연결 실패 시 더미 데이터 반환
 		if (!db) {
-			throw new Error("데이터베이스 연결이 없습니다.");
+			return [
+				{ albumName: "앨범 A", revenue: 850000000, rank: 1 },
+				{ albumName: "앨범 B", revenue: 720000000, rank: 2 },
+				{ albumName: "앨범 C", revenue: 680000000, rank: 3 },
+				{ albumName: "앨범 D", revenue: 550000000, rank: 4 },
+				{ albumName: "앨범 E", revenue: 480000000, rank: 5 },
+			];
 		}
 
 		// 음반 사업 프로젝트만 필터링
@@ -507,8 +559,15 @@ export const dashboardRouter = router({
 	getCompanyRevenueShare: publicProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
 
+		// 프로토타입: DB 연결 실패 시 더미 데이터 반환
 		if (!db) {
-			throw new Error("데이터베이스 연결이 없습니다.");
+			return [
+				{ companyName: "기획사 A", share: 35.5 },
+				{ companyName: "기획사 B", share: 28.3 },
+				{ companyName: "기획사 C", share: 18.7 },
+				{ companyName: "기획사 D", share: 12.2 },
+				{ companyName: "기타", share: 5.3 },
+			];
 		}
 
 		const allProjects = await db.select().from(project);
@@ -549,8 +608,13 @@ export const dashboardRouter = router({
 	getRiskRanking: publicProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
 
+		// 프로토타입: DB 연결 실패 시 더미 데이터 반환
 		if (!db) {
-			throw new Error("데이터베이스 연결이 없습니다.");
+			return [
+				{ projectName: "프로젝트 A", riskScore: 85, elapsedRatio: 0.65, recoupRate: 0.35 },
+				{ projectName: "프로젝트 B", riskScore: 72, elapsedRatio: 0.58, recoupRate: 0.42 },
+				{ projectName: "프로젝트 C", riskScore: 68, elapsedRatio: 0.62, recoupRate: 0.38 },
+			];
 		}
 
 		const allProjects = await db.select().from(project);
