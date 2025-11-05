@@ -53,3 +53,6 @@ temp
 *.db
 *.sqlite
 *.sqlite3
+
+# DB folder (data files)
+db/
