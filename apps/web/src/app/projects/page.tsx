@@ -58,6 +58,7 @@ export default function ProjectsPage() {
 			companyName: companyFilter || undefined,
 		}),
 	);
+	const projectsData = projectsQuery.data?.items || [];
 
 	const selectedProjectQuery = useQuery({
 		...trpc.project.getById.queryOptions({ projectId: selectedProjectId || "" }),
@@ -193,14 +194,14 @@ export default function ProjectsPage() {
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{projectsQuery.data?.items.length === 0 ? (
+									{projectsData.length === 0 ? (
 										<TableRow>
 											<TableCell colSpan={8} className="h-24 text-center">
 												프로젝트가 없습니다.
 											</TableCell>
 										</TableRow>
 									) : (
-										projectsQuery.data?.items.map((proj) => {
+										projectsData.map((proj) => {
 											const totalInvestment =
 												proj.initialInvestment +
 												proj.additionalInvestment +
