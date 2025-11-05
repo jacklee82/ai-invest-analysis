@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { trpc } from "@/utils/trpc";
+import { trpc, trpcClient } from "@/utils/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,10 +70,7 @@ export default function ProjectsPage() {
 	});
 
 	const deleteMutation = useMutation({
-		mutationFn: async (projectId: string) => {
-			const result = await trpc.project.delete.mutate({ projectId });
-			return result;
-		},
+		...trpc.project.delete.mutationOptions(),
 		onSuccess: () => {
 			toast.success("프로젝트가 삭제되었습니다.");
 			projectsQuery.refetch();
@@ -386,10 +383,7 @@ function AddProjectDialog({
 	});
 
 	const createMutation = useMutation({
-		mutationFn: async (data: typeof formData) => {
-			const result = await trpc.project.create.mutate(data);
-			return result;
-		},
+		...trpc.project.create.mutationOptions(),
 		onSuccess: () => {
 			toast.success("프로젝트가 추가되었습니다.");
 			onSuccess();
@@ -668,14 +662,7 @@ function EditProjectDialog({
 	}, [projectQuery.data, formData]);
 
 	const updateMutation = useMutation({
-		mutationFn: async (data: typeof formData) => {
-			if (!data) return;
-			const result = await trpc.project.update.mutate({
-				projectId,
-				...data,
-			});
-			return result;
-		},
+		...trpc.project.update.mutationOptions(),
 		onSuccess: () => {
 			toast.success("프로젝트가 수정되었습니다.");
 			onSuccess();
@@ -688,7 +675,10 @@ function EditProjectDialog({
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (formData) {
-			updateMutation.mutate(formData);
+			updateMutation.mutate({
+				projectId,
+				...formData,
+			});
 		}
 	};
 
@@ -923,10 +913,7 @@ function CashflowDialog({
 	const [editingCashflowId, setEditingCashflowId] = useState<string | null>(null);
 
 	const deleteMutation = useMutation({
-		mutationFn: async (id: string) => {
-			const result = await trpc.project.deleteCashflow.mutate({ id });
-			return result;
-		},
+		...trpc.project.deleteCashflow.mutationOptions(),
 		onSuccess: () => {
 			toast.success("현금흐름 데이터가 삭제되었습니다.");
 			cashflowsQuery.refetch();
@@ -1069,13 +1056,7 @@ function AddCashflowDialog({
 	});
 
 	const addMutation = useMutation({
-		mutationFn: async (data: typeof formData) => {
-			const result = await trpc.project.addCashflow.mutate({
-				projectId,
-				...data,
-			});
-			return result;
-		},
+		...trpc.project.addCashflow.mutationOptions(),
 		onSuccess: () => {
 			toast.success("현금흐름 데이터가 추가되었습니다.");
 			onSuccess();
@@ -1093,7 +1074,10 @@ function AddCashflowDialog({
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		addMutation.mutate(formData);
+		addMutation.mutate({
+			projectId,
+			...formData,
+		});
 	};
 
 	return (
@@ -1221,13 +1205,7 @@ function EditCashflowDialog({
 	}
 
 	const updateMutation = useMutation({
-		mutationFn: async (data: typeof formData) => {
-			const result = await trpc.project.updateCashflow.mutate({
-				id: cashflowId,
-				...data,
-			});
-			return result;
-		},
+		...trpc.project.updateCashflow.mutationOptions(),
 		onSuccess: () => {
 			toast.success("현금흐름 데이터가 수정되었습니다.");
 			onSuccess();
@@ -1239,7 +1217,10 @@ function EditCashflowDialog({
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		updateMutation.mutate(formData);
+		updateMutation.mutate({
+			id: cashflowId,
+			...formData,
+		});
 	};
 
 	if (!cashflow) {
