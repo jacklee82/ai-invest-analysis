@@ -1,6 +1,6 @@
 {
 	"buildCommand": "turbo build --filter=web",
-	"outputDirectory": ".next",
+	"outputDirectory": "apps/web/.next",
 	"installCommand": "bun install",
 	"framework": "nextjs",
 	"regions": ["icn1"]
