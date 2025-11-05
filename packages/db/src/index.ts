@@ -10,8 +10,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // 환경변수 로드 (시드 스크립트 등에서 사용하기 위해)
-// Next.js 런타임에서는 이미 환경변수가 로드되어 있으므로, 없을 때만 로드
+// Next.js/Vercel 런타임에서는 이미 환경변수가 로드되어 있으므로, 없을 때만 로드
 if (!process.env.DATABASE_URL) {
+	console.log("[DB] DATABASE_URL이 환경변수에 없음, .env 파일에서 로드 시도");
+	
 	// 프로젝트 루트 기준으로 절대 경로 계산
 	const projectRoot = resolve(__dirname, "../../../");
 	const envPath = resolve(projectRoot, "apps/web/.env");
@@ -52,6 +54,9 @@ if (!process.env.DATABASE_URL) {
 			console.log("[DB] 상대 경로 .env 로드 실패:", err);
 		}
 	}
+} else {
+	// Vercel 환경에서는 이미 환경변수가 설정되어 있음
+	console.log("[DB] DATABASE_URL이 환경변수에 이미 설정됨 (Vercel/Next.js 런타임)");
 }
 
 /**
@@ -77,10 +82,28 @@ function getDatabaseUrl(): string {
  * PostgreSQL 클라이언트 생성
  * @returns Drizzle ORM 인스턴스
  */
-const client = postgres(getDatabaseUrl(), {
-	max: 1, // 연결 풀 크기 (Supabase 무료 티어 제한: 2개 동시 연결)
-	// Supabase Connection Pooler를 사용하는 경우 자동으로 풀링 처리됨
-});
+function createPostgresClient() {
+	const url = getDatabaseUrl();
+	const isSupabase = url.includes("supabase.com") || url.includes("supabase.co");
+	
+	// Supabase 연결 설정
+	const config: postgres.Options<{}> = {
+		max: 1, // 연결 풀 크기 (Supabase 무료 티어 제한: 2개 동시 연결)
+		// Supabase Connection Pooler를 사용하는 경우 자동으로 풀링 처리됨
+	};
+	
+	// Supabase는 SSL 연결 필수
+	if (isSupabase) {
+		config.ssl = {
+			rejectUnauthorized: false, // Supabase 인증서 자동 처리
+		};
+		console.log("[DB] Supabase SSL 연결 설정 적용");
+	}
+	
+	return postgres(url, config);
+}
+
+const client = createPostgresClient();
 
 export const db = drizzle(client, { schema });
 
