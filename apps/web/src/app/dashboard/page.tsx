@@ -135,16 +135,19 @@ export default function DashboardPage() {
 						<Skeleton className="h-32" />
 					</>
 				) : summary.error ? (
-					<div className="col-span-6 p-4 text-center">
-						<div className="text-red-600 font-semibold mb-2">
-							데이터를 불러올 수 없습니다
+					<div className="col-span-6 p-4 text-center border border-red-200 rounded-lg bg-red-50 dark:bg-red-950/20">
+						<div className="text-red-600 dark:text-red-400 font-semibold mb-2 text-lg">
+							⚠️ 데이터베이스 연결 실패
 						</div>
-						<div className="text-sm text-muted-foreground">
+						<div className="text-sm text-red-700 dark:text-red-300 mb-4">
 							{summary.error.message || "알 수 없는 오류가 발생했습니다."}
+						</div>
+						<div className="text-xs text-muted-foreground mb-4">
+							Vercel 환경변수에서 DATABASE_URL이 올바르게 설정되어 있는지 확인해주세요.
 						</div>
 						<button
 							onClick={() => summary.refetch()}
-							className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+							className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
 						>
 							다시 시도
 						</button>

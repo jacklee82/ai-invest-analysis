@@ -18,8 +18,14 @@ export const queryClient = new QueryClient({
 			refetchOnMount: "always",
 			// 네트워크 재연결 시 refetch 비활성화
 			refetchOnReconnect: false,
-			// 재시도 횟수
-			retry: 2,
+			// 재시도 횟수 (504 타임아웃은 재시도하지 않음)
+			retry: (failureCount, error) => {
+				// 타임아웃 오류는 재시도하지 않음
+				if (error?.message?.includes("시간이 초과") || error?.message?.includes("504")) {
+					return false;
+				}
+				return failureCount < 1; // 최대 1회 재시도
+			},
 			// 재시도 지연시간 (지수 백오프)
 			retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
 		},
@@ -47,6 +53,26 @@ export const trpcClient = createTRPCClient<AppRouter>({
 		httpBatchLink({
 			url: "/api/trpc",
 			transformer: superjson,
+			// HTTP 요청 타임아웃 (8초)
+			fetch: async (url, options) => {
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), 8000);
+				
+				try {
+					const response = await fetch(url, {
+						...options,
+						signal: controller.signal,
+					});
+					clearTimeout(timeoutId);
+					return response;
+				} catch (error) {
+					clearTimeout(timeoutId);
+					if (error instanceof Error && error.name === "AbortError") {
+						throw new Error("요청 시간이 초과되었습니다. 데이터베이스 연결을 확인해주세요.");
+					}
+					throw error;
+				}
+			},
 		}),
 	],
 });

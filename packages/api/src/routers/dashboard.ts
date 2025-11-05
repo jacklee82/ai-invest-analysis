@@ -16,11 +16,12 @@ export const dashboardRouter = router({
 		const { db } = ctx;
 
 		if (!db) {
-			throw new Error("데이터베이스 연결이 없습니다.");
+			throw new Error("데이터베이스에 연결할 수 없습니다. 환경변수 DATABASE_URL을 확인해주세요.");
 		}
 
-		// 프로젝트 개수 확인
-		const projectCount = await db.select().from(project);
+		try {
+			// 프로젝트 개수 확인
+			const projectCount = await db.select().from(project);
 		console.log("[Dashboard] 프로젝트 개수:", projectCount.length);
 
 		// 총 투자금 계산
@@ -126,6 +127,22 @@ export const dashboardRouter = router({
 		
 		console.log("[Dashboard] getSummary 반환값:", result);
 		return result;
+		} catch (error) {
+			console.error("[Dashboard] getSummary 에러:", error);
+			const errorMessage = error instanceof Error 
+				? error.message 
+				: "데이터베이스 쿼리 실행 중 오류가 발생했습니다.";
+			
+			// 타임아웃 또는 연결 오류인 경우 명확한 메시지
+			if (errorMessage.includes("timeout") || errorMessage.includes("TIMEOUT") || errorMessage.includes("ETIMEDOUT")) {
+				throw new Error("데이터베이스 연결 시간이 초과되었습니다. DATABASE_URL 설정을 확인해주세요.");
+			}
+			if (errorMessage.includes("connect") || errorMessage.includes("ECONNREFUSED")) {
+				throw new Error("데이터베이스에 연결할 수 없습니다. DATABASE_URL을 확인해주세요.");
+			}
+			
+			throw new Error(`데이터 조회 실패: ${errorMessage}`);
+		}
 	}),
 
 	/**
