@@ -82,6 +82,9 @@ export default function DashboardPage() {
 	const albumRevenueRanking = useQuery(
 		trpc.dashboard.getAlbumRevenueRanking.queryOptions(),
 	);
+	const albumRevenueRankingData = Array.isArray(albumRevenueRanking.data)
+		? albumRevenueRanking.data
+		: [];
 	const companyRevenueShare = useQuery(
 		trpc.dashboard.getCompanyRevenueShare.queryOptions(),
 	);
@@ -354,9 +357,9 @@ export default function DashboardPage() {
 				<ChartWrapper
 					title="음반 매출 순위"
 					isLoading={albumRevenueRanking.isLoading}
-					hasData={!!(albumRevenueRanking.data && albumRevenueRanking.data.length > 0)}
+					hasData={albumRevenueRankingData.length > 0}
 				>
-					{albumRevenueRanking.data && albumRevenueRanking.data.length > 0 && (
+					{albumRevenueRankingData.length > 0 && (
 						<ReactECharts
 							option={{
 								tooltip: {
@@ -390,7 +393,7 @@ export default function DashboardPage() {
 								},
 								yAxis: {
 									type: "category",
-									data: albumRevenueRanking.data.map((item) => item.projectName),
+									data: albumRevenueRankingData.map((item) => item.projectName),
 									axisLabel: {
 										formatter: (value: string) => {
 											return value.length > 12 ? value.substring(0, 12) + "..." : value;
@@ -401,7 +404,7 @@ export default function DashboardPage() {
 									{
 										name: "매출",
 										type: "bar",
-										data: albumRevenueRanking.data.map((item) => item.revenue),
+										data: albumRevenueRankingData.map((item) => item.revenue),
 										itemStyle: { color: "#f59e0b" },
 										label: {
 											show: true,
