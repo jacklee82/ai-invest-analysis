@@ -85,11 +85,16 @@ function getDatabaseUrl(): string {
 function createPostgresClient() {
 	const url = getDatabaseUrl();
 	const isSupabase = url.includes("supabase.com") || url.includes("supabase.co");
+	const isPooler = url.includes("pooler.supabase.com");
 	
 	// Supabase 연결 설정
 	const config: postgres.Options<{}> = {
 		max: 1, // 연결 풀 크기 (Supabase 무료 티어 제한: 2개 동시 연결)
 		// Supabase Connection Pooler를 사용하는 경우 자동으로 풀링 처리됨
+		// Vercel 서버리스 환경을 위한 타임아웃 설정
+		connect_timeout: 10, // 연결 타임아웃 (10초)
+		idle_timeout: 20, // 유휴 연결 타임아웃 (20초)
+		max_lifetime: 60 * 30, // 연결 최대 수명 (30분)
 	};
 	
 	// Supabase는 SSL 연결 필수
@@ -98,6 +103,14 @@ function createPostgresClient() {
 			rejectUnauthorized: false, // Supabase 인증서 자동 처리
 		};
 		console.log("[DB] Supabase SSL 연결 설정 적용");
+	}
+	
+	// Connection Pooler 사용 시 추가 설정
+	if (isPooler) {
+		// Pooler는 연결을 재사용하므로 더 짧은 타임아웃 사용
+		config.connect_timeout = 5; // Pooler 연결은 더 빠르게 (5초)
+		config.idle_timeout = 10; // 유휴 연결 타임아웃 (10초)
+		console.log("[DB] Connection Pooler 설정 적용");
 	}
 	
 	return postgres(url, config);
